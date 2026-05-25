@@ -1,0 +1,1976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Alert Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1c1c1c;
+    --border: #2a2a2a;
+    --text: #f0f0f0;
+    --muted: #666;
+    --green: #00c805;
+    --orange: #ff6b00;
+    --red: #ff3b30;
+    --purple: #a78bfa;
+    --accent: #ff6b00;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+
+  /* HEADER */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,10,0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-middle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .header-left h1 {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .header-left span {
+    font-size: 9px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  @media (min-width: 600px) {
+    .header {
+      flex-direction: row;
+      align-items: center;
+      padding: 16px 20px;
+      position: relative;
+    }
+    .header-middle {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    .header-left h1 { font-size: 20px; }
+    .header-left span { font-size: 11px; }
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,200,5,0.1);
+    border: 1px solid rgba(0,200,5,0.3);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--green);
+    font-weight: 600;
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* SUMMARY BAR */
+  .summary-bar {
+    display: flex;
+    gap: 1px;
+    background: var(--border);
+    margin: 0;
+  }
+
+  .summary-item {
+    flex: 1;
+    background: var(--surface);
+    padding: 12px 16px;
+    text-align: center;
+  }
+
+  .summary-item .num {
+    font-size: 20px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .summary-item .label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+
+  .num.green { color: var(--green); }
+  .num.orange { color: var(--orange); }
+  .num.red { color: var(--red); }
+
+  /* LEGEND SCROLL MOBILE */
+  .legend-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    white-space: nowrap;
+  }
+  .legend-bar::-webkit-scrollbar { display: none; }
+
+  /* LAST UPDATE */
+  .last-update {
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    padding: 8px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* SECTION */
+  .section {
+    margin-top: 16px;
+    padding: 0 16px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    padding: 0 4px;
+  }
+
+  .section-icon { font-size: 14px; }
+
+  .section-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+  }
+
+  .section-count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    background: var(--surface2);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  /* TICKER CARD */
+  .ticker-card {
+    background: var(--surface);
+    border-radius: 12px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    transition: border-color 0.3s;
+    position: relative;
+  }
+
+  .ticker-card.status-ok { border-left: 3px solid var(--green); }
+  .ticker-card.status-watch { border-left: 3px solid #ffd700; animation: glow-yellow 2s infinite; }
+  .ticker-card.status-warning { border-left: 3px solid var(--orange); animation: glow-orange 1.2s infinite; }
+  .ticker-card.status-alert { border-left: 3px solid var(--red); animation: glow-red 1s infinite; }
+  .ticker-card.status-beyond { border-left: 3px solid var(--purple); animation: glow-purple 0.8s infinite; }
+
+  @keyframes glow-yellow {
+    0%, 100% { box-shadow: 0 0 0 rgba(255,215,0,0); background: transparent; }
+    50% { box-shadow: 0 0 15px rgba(255,215,0,0.3); background: rgba(255,215,0,0.03); }
+  }
+
+  @keyframes glow-orange {
+    0%, 100% { box-shadow: 0 0 0 rgba(255,107,0,0); background: transparent; }
+    50% { box-shadow: 0 0 20px rgba(255,107,0,0.5); background: rgba(255,107,0,0.05); }
+  }
+
+  @keyframes glow-purple {
+    0%, 100% { box-shadow: 0 0 0 rgba(167,139,250,0); }
+    50% { box-shadow: 0 0 18px rgba(167,139,250,0.5); }
+  }
+
+  @keyframes glow-red {
+    0%, 100% { box-shadow: 0 0 0 rgba(255,59,48,0); background: transparent; }
+    50% { box-shadow: 0 0 25px rgba(255,59,48,0.6); background: rgba(255,59,48,0.07); }
+  }
+
+  .ticker-inner {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .ticker-left { flex: 1; min-width: 0; }
+
+  .ticker-symbol {
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: -0.5px;
+  }
+
+  .ticker-name {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* MINI CHART */
+  .mini-chart {
+    width: 70px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+  
+  .chart-zone {
+    width: 100%;
+    padding: 4px 0;
+    border-top: 1px solid #1a1a1a;
+  }
+
+  /* PRICE SECTION */
+  .ticker-right { text-align: right; flex-shrink: 0; }
+
+  .current-price {
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .alert-price {
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  /* PROGRESS BAR */
+  .progress-wrap {
+    padding: 0 16px 12px;
+  }
+
+  .progress-bar-bg {
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-top: 4px;
+  }
+
+  /* STATUS BADGE */
+  .status-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    margin-top: 4px;
+    display: inline-block;
+  }
+
+  .badge-ok { background: rgba(0,200,5,0.15); color: var(--green); }
+  .badge-watch { background: rgba(255,215,0,0.15); color: #ffd700; }
+  .badge-warning { background: rgba(255,107,0,0.15); color: var(--orange); }
+  .badge-alert { background: rgba(255,59,48,0.15); color: var(--red); }
+  .badge-beyond { background: rgba(167,139,250,0.15); color: var(--purple); }
+
+  /* REQUIRED ATTENTION SECTION */
+  .required-section {
+    background: rgba(255,107,0,0.05);
+    border: 1px solid rgba(255,107,0,0.2);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .required-header {
+    background: rgba(255,107,0,0.1);
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--orange);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ALERT TOAST */
+  .alert-toast {
+    position: fixed;
+    top: 80px;
+    left: 16px;
+    right: 16px;
+    z-index: 999;
+    background: var(--red);
+    color: white;
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: none;
+    animation: slideDown 0.3s ease;
+    box-shadow: 0 8px 32px rgba(255,59,48,0.4);
+  }
+
+  .alert-toast.warning-toast {
+    background: var(--orange);
+    box-shadow: 0 8px 32px rgba(255,107,0,0.4);
+  }
+
+  .alert-toast.show { display: block; }
+
+  @keyframes slideDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .toast-title { font-size: 14px; font-weight: 700; }
+  .toast-msg { font-size: 12px; opacity: 0.9; margin-top: 4px; font-family: 'DM Mono', monospace; }
+  .toast-close {
+    position: absolute;
+    top: 12px; right: 16px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 24px; height: 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ADD TICKER */
+  .add-section {
+    margin: 16px;
+    background: var(--surface);
+    border-radius: 12px;
+    border: 1px dashed var(--border);
+    padding: 16px;
+  }
+
+  .add-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--muted);
+  }
+
+  .add-form {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .add-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .add-input:focus { border-color: var(--accent); }
+  .add-input.ticker-in { width: 90px; text-transform: uppercase; }
+  .add-input.price-in { width: 100px; }
+
+  .add-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 13px;
+    outline: none;
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .add-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+
+  .add-btn:hover { opacity: 0.85; }
+
+  /* REFRESH BTN */
+  .refresh-btn {
+    display: block;
+    margin: 16px auto 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 20px;
+    padding: 8px 24px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.2s;
+  }
+
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .spinning { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  /* REQUIRED ATTENTION TAG ON CARD */
+  .req-tag {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--orange);
+    background: rgba(255,107,0,0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .speculative-tag {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 8px;
+    font-weight: 700;
+    color: #a78bfa;
+    background: rgba(167,139,250,0.15);
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .divider { height: 1px; background: var(--border); margin: 4px 0; }
+</style>
+</head>
+<body>
+
+<!-- PASSWORD GATE -->
+<div id="passwordGate" style="position:fixed; inset:0; background:#0a0a0a; z-index:9999; display:flex; align-items:center; justify-content:center;">
+  <div style="background:#141414; border:1px solid #2a2a2a; border-radius:16px; padding:40px 32px; width:320px; text-align:center;">
+    <div style="font-size:32px; margin-bottom:8px;">✈️📊</div>
+    <div style="font-size:20px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">Alcance Alert</div>
+    <div style="font-size:12px; color:#555; margin-bottom:24px; text-transform:uppercase; letter-spacing:1px;">by Alcance Aviation & Trade</div>
+    <input id="pwInput" type="password" placeholder="Enter password" 
+      style="width:100%; background:#1c1c1c; border:1px solid #2a2a2a; border-radius:8px; padding:12px 16px; color:#f0f0f0; font-size:14px; outline:none; text-align:center; font-family:'DM Mono',monospace; margin-bottom:12px;"
+      onkeydown="if(event.key==='Enter') checkPassword()">
+    <button onclick="checkPassword()" 
+      style="width:100%; background:#ff6b00; color:white; border:none; border-radius:8px; padding:12px; font-size:14px; font-weight:700; cursor:pointer;">
+      ACCESS DASHBOARD
+    </button>
+    <div id="pwError" style="color:#ff3b30; font-size:12px; margin-top:10px; display:none;">❌ Incorrect password</div>
+  </div>
+</div>
+
+<script>
+function checkPassword() {
+  const input = document.getElementById('pwInput').value;
+  if (input === 'Alcancealert1') {
+    document.getElementById('passwordGate').style.display = 'none';
+  } else {
+    document.getElementById('pwError').style.display = 'block';
+    document.getElementById('pwInput').value = '';
+  }
+}
+</script>
+
+<div class="alert-toast" id="alertToast">
+  <button class="toast-close" onclick="closeToast()">✕</button>
+  <div class="toast-title" id="toastTitle">🚨 ALERT TRIGGERED</div>
+  <div class="toast-msg" id="toastMsg"></div>
+</div>
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-left">
+      <h1>Alcance Alert</h1>
+      <div style="font-size:9px; color:#555; font-weight:600; letter-spacing:0.5px; text-transform:uppercase;">by Alcance Aviation & Trade ✈️📈</div>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div style="display:flex; flex-direction:column; align-items:center; background:rgba(255,255,255,0.04); border:1px solid #222; border-radius:8px; padding:4px 10px;">
+        <div class="num" id="totalCount" style="font-size:14px; font-weight:700; color:#fff; line-height:1;">—</div>
+        <div style="font-size:8px; color:#555; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; margin-top:2px;">Watching</div>
+      </div>
+      <div class="live-badge">
+        <div class="live-dot"></div>
+        LIVE
+      </div>
+    </div>
+  </div>
+  <div class="header-middle">
+    <div id="marketStatusBadge" style="font-size:14px; font-weight:900; letter-spacing:1px; font-family:'DM Sans',sans-serif;"></div>
+    <div id="marketCountdown" style="font-size:11px; font-family:'DM Mono',monospace; font-weight:700; margin-top:2px;"></div>
+  </div>
+</div>
+
+<div class="summary-bar">
+  <div class="summary-item">
+    <div class="num" style="color:#ffd700;" id="watchCount">—</div>
+    <div class="label">Watch</div>
+  </div>
+  <div class="summary-item">
+    <div class="num orange" id="warningCount">—</div>
+    <div class="label">Near</div>
+  </div>
+  <div class="summary-item">
+    <div class="num red" id="alertCount">—</div>
+    <div class="label">Alert</div>
+  </div>
+  <div class="summary-item">
+    <div class="num" style="color:var(--purple);" id="beyondCount">—</div>
+    <div class="label">Beyond</div>
+  </div>
+
+</div>
+
+
+<!-- LEGEND BAR -->
+<div style="display:flex; gap:1px; background:#1a1a1a; border-bottom:1px solid #222; overflow:hidden; width:100%;">
+  <div style="flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:8px 12px; background:#111;">
+    <div style="width:11px; height:11px; border-radius:50%; background:#00c805; flex-shrink:0;"></div>
+    <div>
+      <div style="font-size:10px; font-weight:700; color:#00c805; letter-spacing:0.3px;">Normal</div>
+      <div style="font-size:9px; color:#444; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Far from alert</div>
+    </div>
+  </div>
+  <div style="flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:8px 12px; background:#111;">
+    <div style="width:11px; height:11px; border-radius:50%; background:#ffd700; flex-shrink:0;"></div>
+    <div>
+      <div style="font-size:10px; font-weight:700; color:#ffd700; letter-spacing:0.3px;">Watch</div>
+      <div style="font-size:9px; color:#444; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Within $10 of target</div>
+    </div>
+  </div>
+  <div style="flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:8px 12px; background:#111;">
+    <div style="width:11px; height:11px; border-radius:50%; background:#ff6b00; flex-shrink:0;"></div>
+    <div>
+      <div style="font-size:10px; font-weight:700; color:#ff6b00; letter-spacing:0.3px;">Approaching</div>
+      <div style="font-size:9px; color:#444; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Within $5 of target</div>
+    </div>
+  </div>
+  <div style="flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:8px 12px; background:#111;">
+    <div style="width:11px; height:11px; border-radius:50%; background:#ff3b30; flex-shrink:0;"></div>
+    <div>
+      <div style="font-size:10px; font-weight:700; color:#ff3b30; letter-spacing:0.3px;">Triggered</div>
+      <div style="font-size:9px; color:#444; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Hit the target</div>
+    </div>
+  </div>
+  <div style="flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:8px 12px; background:#111;">
+    <div style="width:11px; height:11px; border-radius:50%; background:#a78bfa; flex-shrink:0;"></div>
+    <div>
+      <div style="font-size:10px; font-weight:700; color:#a78bfa; letter-spacing:0.3px;">Beyond Alert</div>
+      <div style="font-size:9px; color:#444; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">$5 below target</div>
+    </div>
+  </div>
+</div>
+
+<div class="last-update" id="lastUpdate">Last update: —</div>
+
+<!-- SECTIONS -->
+<div id="sectionsContainer"></div>
+
+<!-- ADD TICKER -->
+<div class="add-section">
+  <div class="add-title">➕ Add New Ticker</div>
+  <div class="add-form">
+    <input class="add-input ticker-in" id="newTicker" placeholder="AAPL" maxlength="6">
+    <input class="add-input price-in" id="newAlert" placeholder="$0.00" type="number" step="0.01">
+    <select class="add-select" id="newGroup">
+      <option value="Aviation / Defense">✈️ Aviation / Defense</option>
+      <option value="Tech">💻 Tech</option>
+      <option value="Speculative">⚡ Speculative</option>
+    </select>
+    <input type="checkbox" id="newRequired" style="display:none">
+    <button class="add-btn" onclick="addTicker()">ADD</button>
+  </div>
+  <div style="margin-top:8px; font-size:11px; color:var(--muted);">
+    <label><input type="checkbox" id="newRequiredCheck" style="margin-right:4px;">Mark as Required Attention</label>
+  </div>
+</div>
+
+<button class="refresh-btn" onclick="refreshPrices()" id="refreshBtn">⟳ Refresh Prices</button>
+
+<!-- GLOSSARY -->
+<div style="margin:24px 16px 0; background:var(--surface); border:1px solid var(--border); border-radius:16px; overflow:hidden;">
+  <div style="background:rgba(255,107,0,0.08); border-bottom:1px solid var(--border); padding:14px 18px; display:flex; align-items:center; gap:8px; cursor:pointer;" onclick="toggleGlossary()">
+    <span style="font-size:15px;">📖</span>
+    <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted);">Glossary — What does it mean?</span>
+    <span id="glossaryArrow" style="margin-left:auto; font-size:10px; color:var(--muted); transition:transform 0.2s;">▼</span>
+  </div>
+  <div id="glossaryPanel" style="display:none; padding:16px;">
+
+    <!-- MARKET SENTIMENT -->
+    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:10px;">📊 Market Sentiment</div>
+    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #00c805;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px;">🟢</span>
+          <span style="font-size:13px; font-weight:700; color:#00c805;">BULLISH</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Analysts expect the stock to go <strong style="color:#f0f0f0;">UP</strong>. More buyers than sellers. Positive outlook for the company. Like a bull charging forward — optimistic.</div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #ff3b30;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px;">🔴</span>
+          <span style="font-size:13px; font-weight:700; color:#ff3b30;">BEARISH</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Analysts expect the stock to go <strong style="color:#f0f0f0;">DOWN</strong>. More sellers than buyers. Negative outlook. Like a bear swiping downward — pessimistic.</div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #ffd700;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px;">🟡</span>
+          <span style="font-size:13px; font-weight:700; color:#ffd700;">NEUTRAL</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Analysts are divided — no clear direction. Could go either way. Usually means the market is waiting for news or earnings results.</div>
+      </div>
+    </div>
+
+    <!-- COMPANY RATINGS -->
+    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:10px;">🏷️ Company Rating</div>
+    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #00c805;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px;">🏆</span>
+          <span style="font-size:13px; font-weight:700; color:#00c805;">BLUE CHIP</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Large, established, financially stable companies. Think Apple, Microsoft, Boeing. Lower risk, consistent performance. The "safe" picks — institutions and pension funds hold these.</div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #4a9eff;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px;">💪</span>
+          <span style="font-size:13px; font-weight:700; color:#4a9eff;">STRONG</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Solid, profitable companies with a proven track record. Not as massive as Blue Chip but very reliable. Good fundamentals, healthy balance sheet.</div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #ffd700;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px;">⚡</span>
+          <span style="font-size:13px; font-weight:700; color:#ffd700;">GROWTH</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Companies expanding fast — revenues growing quickly but may not be fully profitable yet. Higher potential upside, higher volatility. Think Shopify, Zscaler.</div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #ff3b30;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px;">🎲</span>
+          <span style="font-size:13px; font-weight:700; color:#ff3b30;">SPECULATIVE</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">High risk, high reward. Early-stage companies or those with uncertain futures. Could 5x or go to zero. Only invest money you can afford to lose. Example: ASTS SpaceMobile.</div>
+      </div>
+    </div>
+
+    <!-- ALERT LEVELS -->
+    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:10px;">🚨 Alert Levels</div>
+    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #00c805;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px;">✅</span>
+          <span style="font-size:13px; font-weight:700; color:#00c805;">CLEAR</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Price is comfortably above your alert target. No action needed — just monitor.</div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #ffd700;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px;">👀</span>
+          <span style="font-size:13px; font-weight:700; color:#ffd700;">KEEP EYE ON</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Price is within $10 of your alert target. Getting interesting — start paying attention. Could be a buying opportunity forming.</div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #ff6b00;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px;">⚠️</span>
+          <span style="font-size:13px; font-weight:700; color:#ff6b00;">APPROACHING ALERT</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Price is within $5 of your alert target. Time to do your research NOW — be ready to act. Don't wait until it hits.</div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #ff3b30;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px;">🚨</span>
+          <span style="font-size:13px; font-weight:700; color:#ff3b30;">ALERT TRIGGERED</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Price has reached your target. This is your buy zone — analyze, confirm your thesis, and decide. Don't act on emotion.</div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #a78bfa;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+          <span style="font-size:13px;">🟣</span>
+          <span style="font-size:13px; font-weight:700; color:#a78bfa;">BEYOND ALERT</span>
+        </div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Price dropped more than $5 below your target. Strong selling pressure — reassess your position. Could be a deeper discount opportunity or a warning sign.</div>
+      </div>
+    </div>
+
+    <!-- KEY METRICS -->
+    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:10px;">📈 Key Metrics</div>
+    <div style="display:flex; flex-direction:column; gap:8px;">
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">RSI 14 — Relative Strength Index</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Measures if a stock is overbought or oversold on a 0–100 scale.<br>
+          <span style="color:#00c805;">🟢 Below 30</span> = Oversold (possibly cheap, good entry)<br>
+          <span style="color:#ffd700;">🟡 30–70</span> = Neutral (normal range)<br>
+          <span style="color:#ff3b30;">🔴 Above 70</span> = Overbought (possibly expensive, be careful)
+        </div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">Volume</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">How many shares were traded today. High volume on a price drop = strong selling pressure. High volume on a rise = strong buying conviction. Low volume = weak move, may not hold.</div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">P/E Ratio — Price to Earnings</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">How much you pay for $1 of company profit. P/E of 20 means you pay $20 for each $1 earned. Lower P/E can mean undervalued. Very high P/E means high growth expectations — if they miss, stock drops hard.</div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">Beta</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Measures how much a stock moves compared to the market (S&P 500).<br>
+          Beta 1.0 = moves exactly like the market<br>
+          Beta 2.0 = moves twice as much (more volatile)<br>
+          Beta 0.5 = moves half as much (more stable)
+        </div>
+      </div>
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">52W High / Low</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">The highest and lowest price the stock reached in the last 52 weeks (1 year). Useful context — if near the 52W low, could be a value opportunity. If near the 52W high, it's had a strong run.</div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px; padding:12px 14px; background:rgba(255,107,0,0.06); border-radius:10px; border:1px solid rgba(255,107,0,0.2);">
+      <div style="font-size:11px; color:#ff6b00; font-weight:700; margin-bottom:4px;">⚠️ Disclaimer</div>
+      <div style="font-size:10px; color:#666; line-height:1.6;">Alcance Alert is for informational purposes only. Nothing here is financial advice. Always do your own research before investing. Past performance does not guarantee future results.</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// =====================
+// COMPANY DATABASE
+// =====================
+const COMPANY_DB = {
+  EMBJ: { ceo: 'Francisco Gomes Neto', founded: '1969', employees: '19,000+', city: 'São José dos Campos', country: 'Brazil', marketCap: '~$6B', industry: 'Aerospace & Defense', rating: 'GROWTH', sentiment: 'BULLISH' },
+  AER:  { ceo: 'Aengus Kelly', founded: '2005', employees: '400+', city: 'Dublin', country: 'Ireland', marketCap: '~$16B', industry: 'Aircraft Leasing', rating: 'STRONG', sentiment: 'BULLISH' },
+  WLFC: { ceo: 'Charles F. Willis IV', founded: '1985', employees: '200+', city: 'San Carlos', country: 'USA', marketCap: '~$0.6B', industry: 'Aircraft Leasing', rating: 'GROWTH', sentiment: 'NEUTRAL' },
+  BA:   { ceo: 'Kelly Ortberg', founded: '1916', employees: '170,000+', city: 'Arlington', country: 'USA', marketCap: '~$120B', industry: 'Aerospace & Defense', rating: 'BLUE CHIP', sentiment: 'NEUTRAL' },
+  GE:   { ceo: 'Larry Culp', founded: '1892', employees: '50,000+', city: 'Cincinnati', country: 'USA', marketCap: '~$220B', industry: 'Aerospace Engines', rating: 'BLUE CHIP', sentiment: 'BULLISH' },
+  FTAI: { ceo: 'Joseph Adams', founded: '2015', employees: '500+', city: 'New York', country: 'USA', marketCap: '~$12B', industry: 'Aviation MRO', rating: 'GROWTH', sentiment: 'BULLISH' },
+  HWM:  { ceo: 'John Plant', founded: '1888', employees: '22,000+', city: 'Pittsburgh', country: 'USA', marketCap: '~$40B', industry: 'Aerospace Components', rating: 'STRONG', sentiment: 'BULLISH' },
+  GD:   { ceo: 'Phebe Novakovic', founded: '1952', employees: '106,000+', city: 'Reston', country: 'USA', marketCap: '~$70B', industry: 'Defense', rating: 'BLUE CHIP', sentiment: 'BULLISH' },
+  LMT:  { ceo: 'James Taiclet', founded: '1995', employees: '114,000+', city: 'Bethesda', country: 'USA', marketCap: '~$100B', industry: 'Defense', rating: 'BLUE CHIP', sentiment: 'BULLISH' },
+  ATS:  { ceo: 'Andrew Hider', founded: '1978', employees: '7,000+', city: 'Cambridge', country: 'Canada', marketCap: '~$3B', industry: 'Automation', rating: 'GROWTH', sentiment: 'NEUTRAL' },
+  SHOP: { ceo: 'Tobias Lütke', founded: '2006', employees: '10,000+', city: 'Ottawa', country: 'Canada', marketCap: '~$130B', industry: 'E-Commerce', rating: 'STRONG', sentiment: 'BULLISH' },
+  ZS:   { ceo: 'Jay Chaudhry', founded: '2007', employees: '7,000+', city: 'San Jose', country: 'USA', marketCap: '~$20B', industry: 'Cybersecurity', rating: 'GROWTH', sentiment: 'BULLISH' },
+  SNOW: { ceo: 'Sridhar Ramaswamy', founded: '2012', employees: '6,000+', city: 'Bozeman', country: 'USA', marketCap: '~$45B', industry: 'Cloud Data', rating: 'GROWTH', sentiment: 'BULLISH' },
+  ORCL: { ceo: 'Safra Catz', founded: '1977', employees: '164,000+', city: 'Austin', country: 'USA', marketCap: '~$400B', industry: 'Enterprise Software', rating: 'BLUE CHIP', sentiment: 'BULLISH' },
+  PANW: { ceo: 'Nikesh Arora', founded: '2005', employees: '14,000+', city: 'Santa Clara', country: 'USA', marketCap: '~$120B', industry: 'Cybersecurity', rating: 'STRONG', sentiment: 'BULLISH' },
+  VST:  { ceo: 'Jim Burke', founded: '1882', employees: '5,000+', city: 'Irving', country: 'USA', marketCap: '~$40B', industry: 'Power Generation', rating: 'STRONG', sentiment: 'BULLISH' },
+  AMZN: { ceo: 'Andy Jassy', founded: '1994', employees: '1,500,000+', city: 'Seattle', country: 'USA', marketCap: '~$2.1T', industry: 'E-Commerce / Cloud', rating: 'BLUE CHIP', sentiment: 'BULLISH' },
+  AAPL: { ceo: 'Tim Cook', founded: '1976', employees: '164,000+', city: 'Cupertino', country: 'USA', marketCap: '~$3.0T', industry: 'Consumer Technology', rating: 'BLUE CHIP', sentiment: 'BULLISH' },
+  AVGO: { ceo: 'Hock Tan', founded: '1961', employees: '40,000+', city: 'San Jose', country: 'USA', marketCap: '~$850B', industry: 'Semiconductors', rating: 'BLUE CHIP', sentiment: 'BULLISH' },
+  MSFT: { ceo: 'Satya Nadella', founded: '1975', employees: '220,000+', city: 'Redmond', country: 'USA', marketCap: '~$3.2T', industry: 'Cloud / Software', rating: 'BLUE CHIP', sentiment: 'BULLISH' },
+  TSLA: { ceo: 'Elon Musk', founded: '2003', employees: '127,000+', city: 'Austin', country: 'USA', marketCap: '~$1.1T', industry: 'Electric Vehicles', rating: 'GROWTH', sentiment: 'NEUTRAL' },
+  COIN: { ceo: 'Brian Armstrong', founded: '2012', employees: '3,000+', city: 'San Francisco', country: 'USA', marketCap: '~$55B', industry: 'Crypto Exchange', rating: 'SPECULATIVE', sentiment: 'BULLISH' },
+  TSEM: { ceo: 'Russell Ellwanger', founded: '1993', employees: '5,000+', city: 'Migdal HaEmek', country: 'Israel', marketCap: '~$5B', industry: 'Semiconductors', rating: 'GROWTH', sentiment: 'BULLISH' },
+  ASTS: { ceo: 'Abel Avellan', founded: '2017', employees: '800+', city: 'Midland', country: 'USA', marketCap: '~$8B', industry: 'Space Telecom', rating: 'SPECULATIVE', sentiment: 'BULLISH' },
+  INTU: { ceo: 'Sasan Goodarzi', founded: '1983', employees: '18,000+', city: 'Mountain View', country: 'USA', marketCap: '~$160B', industry: 'Financial Software', rating: 'BLUE CHIP', sentiment: 'BULLISH' },
+  WMT:  { ceo: 'Doug McMillon', founded: '1962', employees: '2,100,000+', city: 'Bentonville', country: 'USA', marketCap: '~$750B', industry: 'Retail', rating: 'BLUE CHIP', sentiment: 'BULLISH' },
+  ON:   { ceo: 'Hassane El-Khoury', founded: '1999', employees: '35,000+', city: 'Scottsdale', country: 'USA', marketCap: '~$15B', industry: 'Semiconductors', rating: 'STRONG', sentiment: 'NEUTRAL' },
+};
+
+// =====================
+// TICKER DATA
+// =====================
+let tickers = [
+  // Aviation / Defense
+  { symbol: 'EMBJ', name: 'Embraer', alert: 55, group: 'Aviation / Defense', required: false },
+  { symbol: 'AER', name: 'AerCap Holdings', alert: 139, group: 'Aviation / Defense', required: false },
+  { symbol: 'WLFC', name: 'Willis Lease Finance', alert: 170, group: 'Aviation / Defense', required: false },
+  { symbol: 'BA', name: 'Boeing', alert: 190, group: 'Aviation / Defense', required: true },
+  { symbol: 'GE', name: 'GE Aerospace', alert: 280, group: 'Aviation / Defense', required: false },
+  { symbol: 'FTAI', name: 'FTAI Aviation', alert: 210, group: 'Aviation / Defense', required: false },
+  { symbol: 'HWM', name: 'Howmet Aerospace', alert: 260, group: 'Aviation / Defense', required: false },
+  { symbol: 'GD', name: 'General Dynamics', alert: 315, group: 'Aviation / Defense', required: false },
+  { symbol: 'LMT', name: 'Lockheed Martin', alert: 500, group: 'Aviation / Defense', required: false },
+  // Tech
+  { symbol: 'ATS', name: 'ATS Corporation', alert: 30, group: 'Tech', required: true },
+  { symbol: 'SHOP', name: 'Shopify', alert: 98, group: 'Tech', required: false },
+  { symbol: 'ZS', name: 'Zscaler', alert: 148, group: 'Tech', required: false },
+  { symbol: 'SNOW', name: 'Snowflake', alert: 150, group: 'Tech', required: false },
+  { symbol: 'ORCL', name: 'Oracle', alert: 150, group: 'Tech', required: false },
+  { symbol: 'PANW', name: 'Palo Alto Networks', alert: 200, group: 'Tech', required: false },
+  { symbol: 'VST', name: 'Vistra Corp', alert: 120, group: 'Tech', required: false },
+  { symbol: 'AMZN', name: 'Amazon', alert: 230, group: 'Tech', required: false },
+  { symbol: 'AAPL', name: 'Apple', alert: 260, group: 'Tech', required: false },
+  { symbol: 'AVGO', name: 'Broadcom', alert: 380, group: 'Tech', required: false },
+  { symbol: 'MSFT', name: 'Microsoft', alert: 400, group: 'Tech', required: false },
+  { symbol: 'TSLA', name: 'Tesla', alert: 360, group: 'Tech', required: true },
+    { symbol: 'COIN',  name: 'Coinbase',           alert: 190, group: 'Tech',              required: false },
+  { symbol: 'TSEM',  name: 'Tower Semiconductor',  alert: 242, group: 'Tech',              required: false },
+  // Speculative
+  { symbol: 'ASTS', name: 'AST SpaceMobile', alert: 80, group: 'Speculative', required: false },
+  { symbol: 'INTU', name: 'Intuit Inc', alert: 350, group: 'Tech', required: false },
+  { symbol: 'WMT', name: 'Walmart', alert: 120, group: 'Tech', required: false },
+  { symbol: 'ON',  name: 'ON Semiconductor', alert: 85, group: 'Tech', required: false },
+];
+
+let prices = {};
+let alertedSymbols = new Set();
+let warningSymbols = new Set();
+
+const GROUPS = [
+  { key: 'Aviation / Defense', icon: '✈️', label: 'Aviation / Defense' },
+  { key: 'Tech', icon: '💻', label: 'Tech' },
+  { key: 'Speculative', icon: '⚡', label: 'Speculative' },
+  { key: 'Required Attention', icon: '⚠️', label: 'Required Attention' },
+];
+
+const COMPANY_NAMES = {
+  EMBJ: 'Embraer', AER: 'AerCap Holdings', WLFC: 'Willis Lease Finance',
+  BA: 'Boeing Co', GE: 'GE Aerospace', FTAI: 'FTAI Aviation', HWM: 'Howmet Aerospace',
+  GD: 'General Dynamics', LMT: 'Lockheed Martin', ATS: 'ATS Corporation',
+  SHOP: 'Shopify Inc', ZS: 'Zscaler', SNOW: 'Snowflake', ORCL: 'Oracle Corp',
+  PANW: 'Palo Alto Networks', VST: 'Vistra Corp', AMZN: 'Amazon.com',
+  AAPL: 'Apple Inc', AVGO: 'Broadcom Inc', MSFT: 'Microsoft', TSLA: 'Tesla Inc',
+  TSEM: 'Tower Semiconductor',
+  COIN: 'Coinbase Global',
+  ASTS: 'AST SpaceMobile',
+};
+
+// =====================
+// FETCH PRICES
+// =====================
+let fundamentalsLoaded = false;
+
+async function fetchPrices() {
+  const symbolList = tickers.map(t => t.symbol);
+  
+  // Always fetch prices (fast, Yahoo Finance)
+  for (const symbol of symbolList) {
+    await fetchSinglePrice(symbol);
+  }
+
+  // Fetch fundamentals only on first load OR every 5 minutes
+  if (!fundamentalsLoaded) {
+    fundamentalsLoaded = true;
+    await fetchAllFundamentals(symbolList);
+  }
+
+  render();
+}
+
+async function fetchAllFundamentals(symbolList) {
+  // Split into batches of 5 to respect Finnhub rate limit (60 req/min)
+  // Each symbol = 5 calls, batch of 5 = 25 calls, well under limit
+  for (let i = 0; i < symbolList.length; i++) {
+    await fetchFundamentals(symbolList[i]);
+    await new Promise(r => setTimeout(r, 800)); // 800ms between symbols = ~6 symbols/min safely
+    updateNewsBadges();
+  }
+}
+
+// Refresh fundamentals every 5 minutes separately
+setInterval(async () => {
+  const symbolList = tickers.map(t => t.symbol);
+  await fetchAllFundamentals(symbolList);
+  render();
+}, 5 * 60 * 1000);
+
+async function fetchSinglePrice(symbol) {
+  // Method 1: Yahoo Finance via multiple CORS proxies
+  const proxies = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`)}`,
+    `https://corsproxy.io/?${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`)}`
+  ];
+
+  for (const url of proxies) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) continue;
+      const data = await res.json();
+      const meta = data?.chart?.result?.[0]?.meta;
+      if (meta && meta.regularMarketPrice) {
+        const prevClose = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
+        const currentPrice = meta.regularMarketPrice;
+        const changePct = ((currentPrice - prevClose) / prevClose) * 100;
+        prices[symbol] = {
+          price: currentPrice,
+          change: changePct
+        };
+        return; // success, stop trying proxies
+      }
+    } catch(e) {
+      continue; // try next proxy
+    }
+  }
+}
+
+// =====================
+// FETCH FUNDAMENTALS (Yahoo Finance - Volume, RSI, P/E, Beta)
+// =====================
+async function fetchFundamentals(symbol) {
+  const FINNHUB = 'd85nvihr01qitd92v2s0d85nvihr01qitd92v2sg';
+  if (!FINNHUB) return;
+
+  try {
+    // 1. Finnhub Quote - get volume
+    const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB}`;
+    const qRes = await fetch(quoteUrl, { signal: AbortSignal.timeout(8000) });
+    if (qRes.ok) {
+      const qData = await qRes.json();
+      if (prices[symbol] && qData) {
+        prices[symbol].volume = qData.v || null;
+      }
+    }
+    await new Promise(r => setTimeout(r, 150));
+
+    // 2. Finnhub Basic Financials - get PE, Beta, 52W high/low
+    const metricUrl = `https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${FINNHUB}`;
+    const mRes = await fetch(metricUrl, { signal: AbortSignal.timeout(8000) });
+    if (mRes.ok) {
+      const mData = await mRes.json();
+      const m = mData?.metric || {};
+      if (prices[symbol]) {
+        prices[symbol].pe     = m['peBasicExclExtraTTM'] || m['peTTM'] || null;
+        prices[symbol].beta   = m['beta'] || null;
+        prices[symbol].high52 = m['52WeekHigh'] || null;
+        prices[symbol].low52  = m['52WeekLow'] || null;
+        prices[symbol].avgVolume = m['10DayAverageTradingVolume'] || null;
+      }
+    }
+    await new Promise(r => setTimeout(r, 150));
+
+    // 3. Finnhub Candles - calculate RSI 14
+    const to = Math.floor(Date.now() / 1000);
+    const from = to - (60 * 60 * 24 * 60); // 60 days
+    const candleUrl = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB}`;
+    const cRes = await fetch(candleUrl, { signal: AbortSignal.timeout(8000) });
+    if (cRes.ok) {
+      const cData = await cRes.json();
+      if (cData?.c && cData.c.length >= 15) {
+        prices[symbol].rsi = calcRSI(cData.c, 14);
+      }
+    }
+    await new Promise(r => setTimeout(r, 150));
+
+    // 4. Finnhub News - get latest news for this ticker
+    const newsFrom = new Date(); newsFrom.setDate(newsFrom.getDate() - 7);
+    const newsFromStr = newsFrom.toISOString().split('T')[0];
+    const newsToStr = new Date().toISOString().split('T')[0];
+    const newsUrl = `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${newsFromStr}&to=${newsToStr}&token=${FINNHUB}`;
+    const nRes = await fetch(newsUrl, { signal: AbortSignal.timeout(8000) });
+    if (nRes.ok) {
+      const nData = await nRes.json();
+      if (Array.isArray(nData) && nData.length > 0) {
+        prices[symbol].news = nData.slice(0, 3).map(n => ({
+          headline: n.headline,
+          url: n.url,
+          source: n.source,
+          datetime: n.datetime,
+          summary: n.summary
+        }));
+      }
+    }
+    await new Promise(r => setTimeout(r, 150));
+
+    // 5. Finnhub Company Profile
+    const profileUrl = `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB}`;
+    const pRes = await fetch(profileUrl, { signal: AbortSignal.timeout(8000) });
+    if (pRes.ok) {
+      const pData = await pRes.json();
+      if (pData && pData.name && prices[symbol]) {
+        prices[symbol].profile = {
+          name: pData.name,
+          ceo: pData.ceo || null,
+          employees: pData.employeeTotal || null,
+          founded: pData.ipo ? pData.ipo.split('-')[0] : null,
+          country: pData.country || null,
+          city: pData.city || null,
+          marketCap: pData.marketCapitalization || null,
+          industry: pData.finnhubIndustry || null,
+          website: pData.weburl || null,
+          logo: pData.logo || null
+        };
+      }
+    }
+    await new Promise(r => setTimeout(r, 150));
+
+    // 6. Finnhub Recommendation Trends (Bullish/Bearish)
+    const recUrl = `https://finnhub.io/api/v1/stock/recommendation?symbol=${symbol}&token=${FINNHUB}`;
+    const rRes = await fetch(recUrl, { signal: AbortSignal.timeout(8000) });
+    if (rRes.ok) {
+      const rData = await rRes.json();
+      if (Array.isArray(rData) && rData.length > 0) {
+        const latest = rData[0];
+        const buy = (latest.buy || 0) + (latest.strongBuy || 0);
+        const sell = (latest.sell || 0) + (latest.strongSell || 0);
+        const hold = latest.hold || 0;
+        const total = buy + sell + hold;
+        if (total > 0 && prices[symbol]) {
+          if (buy / total >= 0.55) prices[symbol].sentiment = 'BULLISH';
+          else if (sell / total >= 0.4) prices[symbol].sentiment = 'BEARISH';
+          else prices[symbol].sentiment = 'NEUTRAL';
+          prices[symbol].recBuy = buy;
+          prices[symbol].recSell = sell;
+          prices[symbol].recHold = hold;
+        }
+      }
+    }
+  } catch(e) {
+    console.log(`Fundamentals error for ${symbol}:`, e.message);
+  }
+}
+
+function calcRSI(closes, period) {
+  let gains = 0, losses = 0;
+  for (let i = closes.length - period; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff >= 0) gains += diff;
+    else losses -= diff;
+  }
+  const avgGain = gains / period;
+  const avgLoss = losses / period;
+  if (avgLoss === 0) return 100;
+  const rs = avgGain / avgLoss;
+  return 100 - (100 / (1 + rs));
+}
+
+// =====================
+// STATUS LOGIC
+// =====================
+function getStatus(ticker) {
+  const p = prices[ticker.symbol];
+  if (!p) return 'ok';
+  const price = p.price;
+  const alert = ticker.alert;
+  if (price <= alert - 5) return 'beyond';
+  if (price <= alert) return 'alert';
+  if (price <= alert + 5) return 'warning';
+  if (price <= alert + 10) return 'watch';
+  return 'ok';
+}
+
+function getProgressPct(ticker) {
+  const p = prices[ticker.symbol];
+  if (!p) return 100;
+  const price = p.price;
+  const alert = ticker.alert;
+  // Show how far from alert: 100% = far away, 0% = at alert
+  const range = alert * 0.15; // 15% range for visual
+  const dist = price - alert;
+  if (dist <= 0) return 100;
+  return Math.min(100, (dist / range) * 100);
+}
+
+// =====================
+// MINI CHART (sparkline from change)
+// =====================
+function renderMiniChart(symbol, status) {
+  const colors = { ok: '#00c805', warning: '#ff6b00', alert: '#ff3b30', beyond: '#a78bfa' };
+  const color = colors[status] || '#00c805';
+  // Generate fake sparkline based on random seed from symbol
+  const seed = symbol.charCodeAt(0) + symbol.charCodeAt(symbol.length-1);
+  const points = [];
+  let val = 50;
+  for (let i = 0; i < 12; i++) {
+    val += (Math.sin(seed * i * 0.7) * 8);
+    val = Math.max(10, Math.min(90, val));
+    points.push(val);
+  }
+  // Normalize
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const normalized = points.map(p => ((p - min) / (max - min || 1)) * 30 + 3);
+  const pathPoints = normalized.map((y, i) => `${(i / 11) * 70},${36 - y}`).join(' ');
+  
+  return `<svg class="mini-chart" viewBox="0 0 70 36" preserveAspectRatio="none">
+    <polyline points="${pathPoints}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+  </svg>`;
+}
+
+// =====================
+// RENDER
+// =====================
+function render() {
+  // Save which panels are currently open before rebuilding HTML
+  const openPanels = {};
+  tickers.forEach(t => {
+    const s = document.getElementById(`companyPanel_${t.symbol}`);
+    const c = document.getElementById(`chartPanel_${t.symbol}`);
+    const n = document.getElementById(`newsPanel_${t.symbol}`);
+    openPanels[t.symbol] = {
+      company: s && s.style.display !== 'none',
+      chart:   c && c.style.display !== 'none',
+      news:    n && n.style.display !== 'none',
+    };
+  });
+
+  let totalWarning = 0, totalAlert = 0;
+  const container = document.getElementById('sectionsContainer');
+  let html = '';
+
+  // Sort all tickers by urgency: alert first, then warning, then clear (by price asc)
+  const beyond = tickers.filter(t => getStatus(t) === 'beyond')
+    .sort((a, b) => (prices[a.symbol]?.price || 0) - (prices[b.symbol]?.price || 0));
+  const triggered = tickers.filter(t => getStatus(t) === 'alert')
+    .sort((a, b) => (prices[a.symbol]?.price || 0) - (prices[b.symbol]?.price || 0));
+  const warning = tickers.filter(t => getStatus(t) === 'warning')
+    .sort((a, b) => (prices[a.symbol]?.price || 0) - (prices[b.symbol]?.price || 0));
+  const watch = tickers.filter(t => getStatus(t) === 'watch')
+    .sort((a, b) => (prices[a.symbol]?.price || 0) - (prices[b.symbol]?.price || 0));
+  const clear = tickers.filter(t => getStatus(t) === 'ok')
+    .sort((a, b) => (prices[a.symbol]?.price || 0) - (prices[b.symbol]?.price || 0));
+
+  const urgencyGroups = [
+    { key: 'beyond', label: '🟣 Beyond Alert', tickers: beyond },
+    { key: 'alert', label: '🚨 Triggered', tickers: triggered },
+    { key: 'warning', label: '⚠️ Approaching Alert', tickers: warning },
+    { key: 'watch', label: '👀 Keep Eye On', tickers: watch },
+    { key: 'clear', label: '✅ Clear', tickers: clear },
+  ];
+
+  urgencyGroups.forEach(group => {
+    if (group.tickers.length === 0) return;
+
+    html += `<div class="section">`;
+    html += `<div class="section-header">
+      <span class="section-title">${group.label}</span>
+      <span class="section-count">${group.tickers.length}</span>
+    </div>`;
+
+    group.tickers.forEach(ticker => {
+      const status = getStatus(ticker);
+      const p = prices[ticker.symbol];
+      const price = p?.price;
+      const change = p?.change;
+      const pct = getProgressPct(ticker);
+      const progressColor = status === 'ok' ? '#00c805' : status === 'watch' ? '#ffd700' : status === 'warning' ? '#ff6b00' : '#ff3b30';
+
+      if (status === 'warning' && group.key !== 'Required Attention') totalWarning++;
+      if (status === 'alert' && group.key !== 'Required Attention') totalAlert++;
+
+      const distToAlert = price ? (price - ticker.alert).toFixed(2) : null;
+      const changeStr = change ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%` : '';
+      const changeColor = change >= 0 ? '#00c805' : '#ff3b30';
+
+      let tag = '';
+      const groupIcons = { 'Aviation / Defense': '✈️', 'Tech': '💻', 'Speculative': '⚡' };
+      const groupIcon = groupIcons[ticker.group] || '';
+      let extraTags = '';
+      if (ticker.required) extraTags += `<span style="font-size:8px; background:rgba(255,107,0,0.15); color:var(--orange); padding:2px 6px; border-radius:4px; font-weight:700; margin-left:4px;">⚠ REQ</span>`;
+      if (ticker.group === 'Speculative') extraTags += `<span style="font-size:8px; background:rgba(167,139,250,0.15); color:#a78bfa; padding:2px 6px; border-radius:4px; font-weight:700; margin-left:4px;">⚡ SPEC</span>`;
+      tag = `<div style="position:absolute; top:8px; right:8px; display:flex; gap:4px; align-items:center;">
+        <span style="font-size:9px; color:#555;">${groupIcon} ${ticker.group}</span>
+        ${extraTags}
+      </div>`;
+
+      let badgeClass = 'badge-ok';
+      let badgeText = 'CLEAR';
+      if (status === 'watch') { badgeClass = 'badge-watch'; badgeText = 'KEEP EYE ON'; }
+      if (status === 'warning') { badgeClass = 'badge-warning'; badgeText = 'NEAR ALERT'; }
+      if (status === 'alert') { badgeClass = 'badge-alert'; badgeText = 'ALERT!'; }
+
+      html += `<div class="ticker-card status-${status}">
+        ${tag}
+        <div class="ticker-inner">
+          <div class="ticker-left">
+            <div class="ticker-symbol">${ticker.symbol}</div>
+            <div class="ticker-name">${COMPANY_NAMES[ticker.symbol] || ticker.name}</div>
+            <div class="status-badge ${badgeClass}">${badgeText}</div>
+          </div>
+
+          <div class="ticker-right">
+            <div class="current-price" style="color:${status === 'ok' ? 'var(--text)' : status === 'warning' ? 'var(--orange)' : 'var(--red)'}">
+              ${price ? '$' + price.toFixed(2) : '—'}
+            </div>
+            ${change !== undefined ? `<div style="font-size:11px; color:${changeColor}; font-family:'DM Mono',monospace;">${changeStr}</div>` : ''}
+          </div>
+        </div>
+        <div style="border-top: 1px solid #222; padding: 8px 16px 10px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <div style="text-align:left; flex:1;">
+              <div style="font-size:9px; color:#555; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">52W Low</div>
+              <div style="font-size:13px; font-weight:700; font-family:'DM Mono',monospace; color:#4a9eff;">
+                ${p?.low52 ? '$' + p.low52.toFixed(2) : '—'}
+              </div>
+            </div>
+            <div style="text-align:center; flex:1.5;">
+              <div style="font-size:9px; color:#555; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">Alert Target</div>
+              <div style="font-size:24px; font-weight:900; font-family:'DM Mono',monospace; letter-spacing:-1px; color:${status === 'beyond' ? 'var(--purple)' : status === 'alert' ? 'var(--red)' : status === 'warning' ? 'var(--orange)' : status === 'watch' ? '#ffd700' : '#4a9eff'};">
+                $${ticker.alert.toFixed(2)}
+              </div>
+            </div>
+            <div style="text-align:right; flex:1;">
+              <div style="font-size:9px; color:#555; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:2px;">52W High</div>
+              <div style="font-size:13px; font-weight:700; font-family:'DM Mono',monospace; color:#888;">
+                ${p?.high52 ? '$' + p.high52.toFixed(2) : '—'}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex; gap:1px; background:var(--border); border-top: 1px solid var(--border);">
+          <div style="flex:1; background:var(--surface); padding:8px 10px; text-align:center;">
+            <div style="font-size:9px; color:#555; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Volume</div>
+            <div style="font-size:10px; font-weight:700; font-family:'DM Mono',monospace; color:${p?.volume && p?.avgVolume && p.volume > p.avgVolume * 1000 ? '#00c805' : 'var(--text)'};">
+              ${p?.volume ? (p.volume >= 1000000 ? (p.volume/1000000).toFixed(1)+'M' : p.volume >= 1000 ? (p.volume/1000).toFixed(0)+'K' : p.volume) : '—'}
+            </div>
+            ${p?.avgVolume ? `<div style="font-size:9px; color:#555;">avg ${(p.avgVolume).toFixed(1)}M</div>` : ''}
+          </div>
+          <div style="flex:1; background:var(--surface); padding:8px 10px; text-align:center;">
+            <div style="font-size:9px; color:#555; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">RSI 14</div>
+            <div style="font-size:10px; font-weight:700; font-family:'DM Mono',monospace; color:${p?.rsi ? (p.rsi < 30 ? '#00c805' : p.rsi > 70 ? '#ff3b30' : 'var(--text)') : 'var(--text)'};">
+              ${p?.rsi ? p.rsi.toFixed(1) : '—'}
+            </div>
+            <div style="font-size:9px; color:#555;">${p?.rsi ? (p.rsi < 30 ? 'Oversold 🟢' : p.rsi > 70 ? 'Overbought 🔴' : 'Neutral') : ''}</div>
+          </div>
+          <div style="flex:1; background:var(--surface); padding:8px 10px; text-align:center;">
+            <div style="font-size:9px; color:#555; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">P/E</div>
+            <div style="font-size:10px; font-weight:700; font-family:'DM Mono',monospace; color:var(--text);">
+              ${p?.pe ? p.pe.toFixed(1) : '—'}
+            </div>
+          </div>
+          <div style="flex:1; background:var(--surface); padding:8px 10px; text-align:center;">
+            <div style="font-size:9px; color:#555; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">Beta</div>
+            <div style="font-size:10px; font-weight:700; font-family:'DM Mono',monospace; color:${p?.beta ? (p.beta > 1.5 ? '#ff6b00' : 'var(--text)') : 'var(--text)'};">
+              ${p?.beta ? p.beta.toFixed(2) : '—'}
+            </div>
+          </div>
+        </div>
+        <div style="border-top:1px solid var(--border); display:flex; gap:1px; background:var(--border);">
+          <button onclick="toggleCompany('${ticker.symbol}')" style="flex:1; background:rgba(255,255,255,0.03); border:none; color:#aaa; font-size:10px; font-weight:700; padding:7px 10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; font-family:'DM Sans',sans-serif;">
+            🏢 INFO <span id="companyArrow_${ticker.symbol}" style="transition:transform 0.2s; font-size:8px;">▼</span>
+          </button>
+          <button onclick="toggleChart('${ticker.symbol}', '${status}')" style="flex:1; background:${status === 'beyond' ? 'rgba(167,139,250,0.08)' : status === 'alert' ? 'rgba(255,59,48,0.08)' : status === 'warning' ? 'rgba(255,107,0,0.08)' : status === 'watch' ? 'rgba(255,215,0,0.08)' : 'rgba(255,255,255,0.03)'}; border:none; color:${status === 'beyond' ? '#a78bfa' : status === 'alert' ? '#ff3b30' : status === 'warning' ? '#ff6b00' : status === 'watch' ? '#ffd700' : '#666'}; font-size:10px; font-weight:700; padding:7px 10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; font-family:'DM Sans',sans-serif;">
+            📈 CHART <span id="chartArrow_${ticker.symbol}" style="transition:transform 0.2s; font-size:8px;">▼</span>
+          </button>
+          <button onclick="toggleNews('${ticker.symbol}')" style="flex:1; background:rgba(74,158,255,0.05); border:none; color:#4a9eff; font-size:10px; font-weight:700; padding:7px 10px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; font-family:'DM Sans',sans-serif;">
+            📰 NEWS <span id="newsBadge_${ticker.symbol}"></span>
+            <span id="newsArrow_${ticker.symbol}" style="margin-left:2px; transition:transform 0.2s; font-size:8px;">▼</span>
+          </button>
+        </div>
+        <div id="companyPanel_${ticker.symbol}" style="display:none; border-top:1px solid var(--border); padding:12px 14px; background:rgba(255,255,255,0.02);"></div>
+        <div id="chartPanel_${ticker.symbol}" style="display:none; border-top:1px solid var(--border);">
+          <div id="chartContainer_${ticker.symbol}" style="height:220px; width:100%;"></div>
+        </div>
+        <div id="newsPanel_${ticker.symbol}" style="display:none; border-top:1px solid var(--border); padding:4px 0;"></div>
+        <div class="progress-wrap">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width:${100-pct}%; background:${progressColor};"></div>
+          </div>
+          <div class="progress-label">
+            <span>${distToAlert !== null ? (distToAlert > 0 ? `$${distToAlert} above alert` : `$${Math.abs(distToAlert)} BELOW alert`) : 'Loading...'}</span>
+            <span style="color:${progressColor}">${status === 'ok' ? 'Clear' : status === 'warning' ? 'Approaching!' : '🚨 TRIGGERED'}</span>
+          </div>
+        </div>
+      </div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  container.innerHTML = html;
+
+  // Restore panels that were open before the re-render
+  tickers.forEach(t => {
+    const state = openPanels[t.symbol];
+    if (!state) return;
+    if (state.company) toggleCompany(t.symbol);
+    if (state.news) toggleNews(t.symbol);
+    if (state.chart) {
+      const panel = document.getElementById(`chartPanel_${t.symbol}`);
+      const arrow = document.getElementById(`chartArrow_${t.symbol}`);
+      if (panel) { panel.style.display = 'block'; if (arrow) arrow.style.transform = 'rotate(180deg)'; }
+    }
+  });
+
+  // Update news badges
+  updateNewsBadges();
+
+  // Update summary
+  document.getElementById('totalCount').textContent = tickers.length;
+  document.getElementById('watchCount').textContent = tickers.filter(t => getStatus(t) === 'watch').length;
+  document.getElementById('warningCount').textContent = tickers.filter(t => getStatus(t) === 'warning').length;
+  document.getElementById('alertCount').textContent = tickers.filter(t => getStatus(t) === 'alert').length;
+  const beyondEl = document.getElementById('beyondCount');
+  if (beyondEl) beyondEl.textContent = tickers.filter(t => getStatus(t) === 'beyond').length;
+
+  // Update time
+  const now = new Date();
+  document.getElementById('lastUpdate').textContent = `Last update: ${now.toLocaleTimeString()}`;
+
+  // Check for new alerts
+  checkAlerts();
+}
+
+// =====================
+// ALERTS
+// =====================
+function checkAlerts() {
+  tickers.forEach(ticker => {
+    const status = getStatus(ticker);
+    const p = prices[ticker.symbol];
+    if (!p) return;
+
+    if (status === 'alert' && !alertedSymbols.has(ticker.symbol)) {
+      alertedSymbols.add(ticker.symbol);
+      showToast('alert', `🚨 ${ticker.symbol} — ALERT TRIGGERED!`,
+        `Price $${p.price.toFixed(2)} hit alert of $${ticker.alert.toFixed(2)} — Time to analyze!`);
+    } else if (status === 'warning' && !warningSymbols.has(ticker.symbol)) {
+      warningSymbols.add(ticker.symbol);
+      showToast('warning', `⚠️ ${ticker.symbol} — Approaching Alert`,
+        `Price $${p.price.toFixed(2)} is within $5 of alert $${ticker.alert.toFixed(2)}`);
+    } else if (status === 'ok') {
+      alertedSymbols.delete(ticker.symbol);
+      warningSymbols.delete(ticker.symbol);
+    }
+  });
+}
+
+let toastQueue = [];
+let toastShowing = false;
+
+function showToast(type, title, msg) {
+  toastQueue.push({ type, title, msg });
+  if (!toastShowing) processToastQueue();
+}
+
+function processToastQueue() {
+  if (toastQueue.length === 0) { toastShowing = false; return; }
+  toastShowing = true;
+  const { type, title, msg } = toastQueue.shift();
+  const toast = document.getElementById('alertToast');
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastMsg').textContent = msg;
+  toast.className = 'alert-toast show' + (type === 'warning' ? ' warning-toast' : '');
+  // Play beep
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = type === 'alert' ? 880 : 660;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
+  } catch(e) {}
+  setTimeout(() => { closeToast(); setTimeout(processToastQueue, 500); }, 5000);
+}
+
+function closeToast() {
+  document.getElementById('alertToast').classList.remove('show');
+}
+
+// =====================
+// ADD TICKER
+// =====================
+function addTicker() {
+  const symbol = document.getElementById('newTicker').value.trim().toUpperCase();
+  const alert = parseFloat(document.getElementById('newAlert').value);
+  const group = document.getElementById('newGroup').value;
+  const required = document.getElementById('newRequiredCheck').checked;
+
+  if (!symbol || isNaN(alert) || alert <= 0) {
+    alert('Please enter a valid ticker and alert price.');
+    return;
+  }
+
+  if (tickers.find(t => t.symbol === symbol)) {
+    alert(`${symbol} is already in your list.`);
+    return;
+  }
+
+  tickers.push({ symbol, name: symbol, alert, group, required });
+  document.getElementById('newTicker').value = '';
+  document.getElementById('newAlert').value = '';
+  document.getElementById('newRequiredCheck').checked = false;
+  refreshPrices();
+}
+
+// =====================
+// REFRESH
+// =====================
+async function refreshPrices() {
+  const btn = document.getElementById('refreshBtn');
+  btn.innerHTML = '<span class="spinning">⟳</span> Refreshing...';
+  btn.disabled = true;
+  await fetchPrices();
+  render();
+  btn.innerHTML = '⟳ Refresh Prices';
+  btn.disabled = false;
+}
+
+// =====================
+// COMPANY RATING
+// =====================
+function getCompanyRating(profile, group) {
+  if (!profile) return null;
+  const cap = profile.marketCap || 0; // in millions
+  const emp = parseInt(profile.employees) || 0;
+
+  if (group === 'Speculative') {
+    return { label: 'SPECULATIVE', color: '#ff3b30', bg: 'rgba(255,59,48,0.12)', icon: '🎲' };
+  }
+  if (cap >= 200000 || emp >= 50000) {
+    return { label: 'BLUE CHIP', color: '#00c805', bg: 'rgba(0,200,5,0.12)', icon: '🏆' };
+  }
+  if (cap >= 20000 || emp >= 5000) {
+    return { label: 'STRONG', color: '#4a9eff', bg: 'rgba(74,158,255,0.12)', icon: '💪' };
+  }
+  if (cap >= 2000 || emp >= 500) {
+    return { label: 'GROWTH', color: '#ffd700', bg: 'rgba(255,215,0,0.12)', icon: '⚡' };
+  }
+  return { label: 'SPECULATIVE', color: '#ff3b30', bg: 'rgba(255,59,48,0.12)', icon: '🎲' };
+}
+
+function getSentimentStyle(sentiment) {
+  if (sentiment === 'BULLISH') return { color: '#00c805', bg: 'rgba(0,200,5,0.12)', icon: '🟢' };
+  if (sentiment === 'BEARISH') return { color: '#ff3b30', bg: 'rgba(255,59,48,0.12)', icon: '🔴' };
+  return { color: '#ffd700', bg: 'rgba(255,215,0,0.12)', icon: '🟡' };
+}
+
+// =====================
+// COMPANY INFO TOGGLE
+// =====================
+function toggleCompany(symbol) {
+  const panel = document.getElementById(`companyPanel_${symbol}`);
+  const arrow = document.getElementById(`companyArrow_${symbol}`);
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+  if (!isOpen) {
+    const db = COMPANY_DB[symbol];
+    if (!db) { panel.innerHTML = '<div style="font-size:11px;color:#555;text-align:center;padding:8px;">No data</div>'; return; }
+    const R = { 'BLUE CHIP':{c:'#00c805',bg:'rgba(0,200,5,0.12)',i:'🏆'}, 'STRONG':{c:'#4a9eff',bg:'rgba(74,158,255,0.12)',i:'💪'}, 'GROWTH':{c:'#ffd700',bg:'rgba(255,215,0,0.12)',i:'⚡'}, 'SPECULATIVE':{c:'#ff3b30',bg:'rgba(255,59,48,0.12)',i:'🎲'} };
+    const S = { 'BULLISH':{c:'#00c805',bg:'rgba(0,200,5,0.12)',i:'🟢'}, 'BEARISH':{c:'#ff3b30',bg:'rgba(255,59,48,0.12)',i:'🔴'}, 'NEUTRAL':{c:'#ffd700',bg:'rgba(255,215,0,0.12)',i:'🟡'} };
+    const r = R[db.rating] || R['GROWTH'];
+    const s = S[db.sentiment] || S['NEUTRAL'];
+    panel.innerHTML = `<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;"><span style="background:${r.bg};color:${r.c};font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid ${r.c}40;">${r.i} ${db.rating}</span><span style="background:${s.bg};color:${s.c};font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid ${s.c}40;">${s.i} ${db.sentiment}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.5px;">CEO</div><div style="font-size:11px;color:#e0e0e0;margin-top:2px;">${db.ceo}</div></div><div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.5px;">Founded</div><div style="font-size:11px;color:#e0e0e0;margin-top:2px;">${db.founded}</div></div><div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.5px;">Employees</div><div style="font-size:11px;color:#e0e0e0;margin-top:2px;">${db.employees}</div></div><div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.5px;">HQ</div><div style="font-size:11px;color:#e0e0e0;margin-top:2px;">${db.city}, ${db.country}</div></div><div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.5px;">Market Cap</div><div style="font-size:11px;color:#e0e0e0;margin-top:2px;">${db.marketCap}</div></div><div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.5px;">Industry</div><div style="font-size:11px;color:#e0e0e0;margin-top:2px;">${db.industry}</div></div></div>`;
+  }
+}
+
+// =====================
+// NEWS TOGGLE
+// =====================
+function toggleNews(symbol) {
+  const panel = document.getElementById(`newsPanel_${symbol}`);
+  const arrow = document.getElementById(`newsArrow_${symbol}`);
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+
+  if (!isOpen) {
+    const p = prices[symbol];
+    const news = p?.news;
+    if (news && news.length > 0) {
+      panel.innerHTML = news.map(n => `
+        <a href="${n.url}" target="_blank" style="display:block; padding:8px 14px; text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div style="font-size:11px; color:#e0e0e0; line-height:1.4; margin-bottom:3px;">${n.headline}</div>
+          <div style="font-size:9px; color:#555;">${n.source} · ${new Date(n.datetime * 1000).toLocaleDateString()}</div>
+        </a>`).join('');
+    } else {
+      panel.innerHTML = '<div style="font-size:11px;color:#555;text-align:center;padding:12px;">No recent news available</div>';
+    }
+  }
+}
+
+// Update news badge counts after fundamentals load
+function updateNewsBadges() {
+  tickers.forEach(ticker => {
+    const badge = document.getElementById(`newsBadge_${ticker.symbol}`);
+    if (!badge) return;
+    const p = prices[ticker.symbol];
+    if (p?.news && p.news.length > 0) {
+      badge.innerHTML = `<span style="font-size:9px; background:rgba(74,158,255,0.15); border-radius:10px; padding:1px 5px;">${p.news.length}</span>`;
+    } else {
+      badge.innerHTML = '';
+    }
+  });
+}
+
+// =====================
+// CHART TOGGLE
+// =====================
+const STATUS_COLORS = {
+  ok:      '#00c805',
+  watch:   '#ffd700',
+  warning: '#ff6b00',
+  alert:   '#ff3b30',
+  beyond:  '#a78bfa'
+};
+
+function toggleChart(symbol, status) {
+  const panel = document.getElementById(`chartPanel_${symbol}`);
+  const arrow = document.getElementById(`chartArrow_${symbol}`);
+  const container = document.getElementById(`chartContainer_${symbol}`);
+  if (!panel) return;
+
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+
+  if (!isOpen && container && !container.dataset.loaded) {
+    container.dataset.loaded = '1';
+    const color = STATUS_COLORS[status] || '#00c805';
+    const script = document.createElement('script');
+    script.src = 'https://s3.tradingview.com/tv.js';
+    script.onload = () => {
+      new TradingView.widget({
+        container_id: `chartContainer_${symbol}`,
+        symbol: symbol,
+        interval: 'D',
+        timezone: 'America/New_York',
+        theme: 'dark',
+        style: '1',
+        locale: 'en',
+        toolbar_bg: '#141414',
+        enable_publishing: false,
+        hide_top_toolbar: false,
+        hide_legend: true,
+        save_image: false,
+        height: 220,
+        width: '100%',
+        overrides: {
+          'mainSeriesProperties.candleStyle.upColor': color,
+          'mainSeriesProperties.candleStyle.downColor': color,
+          'mainSeriesProperties.candleStyle.borderUpColor': color,
+          'mainSeriesProperties.candleStyle.borderDownColor': color,
+          'mainSeriesProperties.candleStyle.wickUpColor': color,
+          'mainSeriesProperties.candleStyle.wickDownColor': color,
+          'paneProperties.background': '#0a0a0a',
+          'paneProperties.vertGridProperties.color': '#1a1a1a',
+          'paneProperties.horzGridProperties.color': '#1a1a1a',
+        }
+      });
+    };
+    document.head.appendChild(script);
+  }
+}
+
+// =====================
+// MARKET STATUS
+// =====================
+
+// NYSE Holidays (ET local dates) — format: 'YYYY-MM-DD'
+const NYSE_HOLIDAYS = new Set([
+  '2026-01-01', // New Year's Day
+  '2026-01-19', // MLK Day
+  '2026-02-16', // Presidents Day
+  '2026-04-03', // Good Friday
+  '2026-05-25', // Memorial Day
+  '2026-07-03', // Independence Day (observed)
+  '2026-09-07', // Labor Day
+  '2026-11-26', // Thanksgiving
+  '2026-12-25', // Christmas
+  '2027-01-01', // New Year's Day
+  '2027-01-18', // MLK Day
+  '2027-02-15', // Presidents Day
+  '2027-03-26', // Good Friday
+  '2027-05-31', // Memorial Day
+  '2027-07-05', // Independence Day (observed)
+  '2027-09-06', // Labor Day
+  '2027-11-25', // Thanksgiving
+  '2027-12-24', // Christmas (observed)
+]);
+
+function toET(date) {
+  // Returns a Date object adjusted to ET timezone
+  return new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+}
+
+function dateStr(date) {
+  const et = toET(date);
+  const y = et.getFullYear();
+  const m = String(et.getMonth() + 1).padStart(2, '0');
+  const d = String(et.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function isHoliday(date) {
+  return NYSE_HOLIDAYS.has(dateStr(date));
+}
+
+function isMarketDay(date) {
+  const et = toET(date);
+  const day = et.getDay(); // 0=Sun, 6=Sat
+  if (day === 0 || day === 6) return false;
+  if (isHoliday(date)) return false;
+  return true;
+}
+
+function getNextMarketOpen(from) {
+  const next = new Date(from);
+  next.setSeconds(0, 0);
+  // Start from tomorrow
+  next.setDate(next.getDate() + 1);
+  while (!isMarketDay(next)) {
+    next.setDate(next.getDate() + 1);
+  }
+  // Set to 9:30 AM ET
+  const et = toET(next);
+  const utcOffset = next.getTime() - et.getTime();
+  const open = new Date(next);
+  open.setHours(0, 0, 0, 0);
+  // Set 9:30 AM in ET
+  const etOpen = new Date(next.toLocaleDateString('en-US', { timeZone: 'America/New_York' }));
+  // Build target date string
+  const ds = dateStr(next);
+  const [y, mo, d] = ds.split('-');
+  // Use Date with explicit ET time
+  const openET = new Date(`${ds}T09:30:00`);
+  // Adjust for ET offset
+  const etNow = toET(new Date());
+  const nowStr = new Date().toLocaleString('en-US', { timeZone: 'America/New_York' });
+  // Return a date that represents 9:30 AM ET on next market day
+  return openET;
+}
+
+function formatDayName(date) {
+  const et = toET(date);
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${days[et.getDay()]} ${months[et.getMonth()]} ${et.getDate()}`;
+}
+
+function updateMarketStatus() {
+  const now = new Date();
+  const etNow = toET(now);
+  const day = etNow.getDay();
+  const hour = etNow.getHours();
+  const min = etNow.getMinutes();
+  const sec = etNow.getSeconds();
+  const timeET = hour + min/60 + sec/3600;
+
+  const badge = document.getElementById('marketStatusBadge');
+  const countdown = document.getElementById('marketCountdown');
+
+  const todayIsMarketDay = isMarketDay(now);
+  const isOpen = todayIsMarketDay && timeET >= 9.5 && timeET < 16;
+
+  function fmtCountdown(diff) {
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    return `${h}h ${m}m ${s}s`;
+  }
+
+  if (isOpen) {
+    // 🟢 MARKET OPEN — countdown to 4:00 PM ET
+    badge.innerHTML = '🟢 MARKET OPEN';
+    badge.style.color = '#00c805';
+    const closeET = new Date(now);
+    const etClose = toET(closeET);
+    etClose.setHours(16, 0, 0, 0);
+    const diffToClose = etClose - etNow;
+    countdown.textContent = `Closes in ${fmtCountdown(diffToClose)}`;
+    countdown.style.color = '#00c805';
+
+  } else {
+    badge.innerHTML = '🔴 MARKET CLOSED';
+    badge.style.color = '#ff3b30';
+
+    // Determine if countdown should show or just a label
+    // Show countdown if:
+    // - Weekday after close (Mon-Thu after 4PM, or Fri... no)
+    // - Sunday after 4PM ET
+    const isSunday = day === 0;
+    const isSaturday = day === 6;
+    const isFriday = day === 5;
+    const isWeekdayAfterClose = todayIsMarketDay && timeET >= 16;
+    const isSundayAfterFour = isSunday && timeET >= 16;
+
+    const showCountdown = isWeekdayAfterClose && !isFriday || isSundayAfterFour;
+
+    if (showCountdown) {
+      // Find next market open (tomorrow or Monday)
+      const nextOpen = new Date(now);
+      const etNext = toET(nextOpen);
+      etNext.setDate(etNext.getDate() + 1);
+      // Skip non-market days
+      let tries = 0;
+      while (tries < 10) {
+        const testDate = new Date(now);
+        testDate.setDate(now.getDate() + tries + 1);
+        if (isMarketDay(testDate)) {
+          const ds = dateStr(testDate);
+          // Create 9:30 AM ET for that day
+          // We'll compute diff using ET times
+          const etTarget = toET(testDate);
+          etTarget.setHours(9, 30, 0, 0);
+          const diff = etTarget - etNow;
+          countdown.textContent = `Opens in ${fmtCountdown(diff)}`;
+          countdown.style.color = '#ff3b30';
+          break;
+        }
+        tries++;
+      }
+    } else {
+      // Show next market open date/day
+      let tries = 1;
+      while (tries < 10) {
+        const testDate = new Date(now);
+        testDate.setDate(now.getDate() + tries);
+        if (isMarketDay(testDate)) {
+          const label = formatDayName(testDate);
+          countdown.textContent = `Opens ${label} 9:30 AM ET`;
+          countdown.style.color = '#ff3b30';
+          break;
+        }
+        tries++;
+      }
+    }
+  }
+}
+
+// =====================
+// MARKET OPEN BELL
+// =====================
+function playMarketBell() {
+  try {
+    const ctx = new AudioContext();
+
+    function playBell(startTime) {
+      // Bell body — fundamental + harmonics for metallic sound
+      const freqs = [440, 880, 1320, 1760, 2200, 987, 1480];
+      const gains = [0.5, 0.3, 0.2, 0.15, 0.1, 0.25, 0.15];
+
+      freqs.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(gains[i], startTime);
+        // Bell decay — fast attack, long decay
+        gain.gain.exponentialRampToValueAtTime(gains[i] * 0.3, startTime + 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + 3.5);
+        osc.start(startTime);
+        osc.stop(startTime + 3.5);
+      });
+
+      // Add slight noise for metallic clang
+      const bufferSize = ctx.sampleRate * 0.05;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let j = 0; j < bufferSize; j++) data[j] = Math.random() * 2 - 1;
+      const noise = ctx.createBufferSource();
+      noise.buffer = buffer;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(0.3, startTime);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.1);
+      noise.connect(noiseGain);
+      noiseGain.connect(ctx.destination);
+      noise.start(startTime);
+    }
+
+    const now = ctx.currentTime;
+    // Ring 3 times like NYSE
+    playBell(now);
+    playBell(now + 3.8);
+    playBell(now + 7.6);
+
+    // Show toast
+    showToast('warning', '🔔 Market Open!', 'NYSE is now open — 9:30 AM ET');
+  } catch(e) {}
+}
+
+let bellRung = false;
+let warningRung = false;
+let closeWarningRung = false;
+let oneMinWarningRung = false;
+
+function playWarningSound() {
+  try {
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+    // 3 quick attention beeps
+    [0, 0.3, 0.6].forEach(t => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = 660;
+      gain.gain.setValueAtTime(0.4, now + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + t + 0.25);
+      osc.start(now + t);
+      osc.stop(now + t + 0.25);
+    });
+    showToast('warning', '⏰ Market opens in 5 minutes!', 'NYSE opens at 9:30 AM ET — Get ready!');
+  } catch(e) {}
+}
+
+function checkMarketBell() {
+  const now = new Date();
+  const day = now.getDay();
+  const hour = now.getHours();
+  const min = now.getMinutes();
+  const isWeekday = day >= 1 && day <= 5;
+  const isOpenTime = hour === 9 && min === 30;
+  const isWarningTime = hour === 9 && min === 25;
+
+  const isCloseWarningTime = hour === 15 && min === 55;
+  const isCloseTime = hour === 16 && min === 0;
+
+  // 5 min warning — open
+  if (isWeekday && isWarningTime && !warningRung) {
+    warningRung = true;
+    playWarningSound();
+  }
+
+  // 1 min warning — open
+  const isOneMinWarning = hour === 9 && min === 29;
+  if (isWeekday && isOneMinWarning && !oneMinWarningRung) {
+    oneMinWarningRung = true;
+    try {
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+      // 2 sharp beeps
+      [0, 0.2].forEach(t => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.5, now + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + t + 0.2);
+        osc.start(now + t);
+        osc.stop(now + t + 0.2);
+      });
+      showToast('warning', '⏱️ Market opens in 1 minute!', 'Get ready — NYSE opens at 9:30 AM ET!');
+    } catch(e) {}
+  }
+
+  // Opening bell
+  if (isWeekday && isOpenTime && !bellRung) {
+    bellRung = true;
+    playMarketBell();
+  }
+
+  // 5 min warning — close
+  if (isWeekday && isCloseWarningTime && !closeWarningRung) {
+    closeWarningRung = true;
+    try {
+      const ctx = new AudioContext();
+      const now = ctx.currentTime;
+      // 3 descending beeps for closing warning
+      [[660, 0], [550, 0.3], [440, 0.6]].forEach(([freq, t]) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.4, now + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + t + 0.25);
+        osc.start(now + t);
+        osc.stop(now + t + 0.25);
+      });
+      showToast('warning', '⏰ Market closes in 5 minutes!', 'NYSE closes at 4:00 PM ET — Wrap it up!');
+    } catch(e) {}
+  }
+
+  // Reset flags
+  if (hour === 9 && min > 31) bellRung = false;
+  if (hour === 9 && min > 26) warningRung = false;
+  if (hour === 9 && min > 29) oneMinWarningRung = false;
+  if (hour === 15 && min > 56) closeWarningRung = false;
+  if (hour !== 9) { bellRung = false; warningRung = false; }
+  if (hour !== 15) closeWarningRung = false;
+}
+
+// =====================
+// GLOSSARY TOGGLE
+// =====================
+function toggleGlossary() {
+  const panel = document.getElementById('glossaryPanel');
+  const arrow = document.getElementById('glossaryArrow');
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+
+// =====================
+// INIT
+// =====================
+updateMarketStatus();
+refreshPrices();
+setInterval(refreshPrices, 15000); // refresh every 60 seconds
+setInterval(updateMarketStatus, 1000); // every second for countdown
+setInterval(checkMarketBell, 10000); // check every 10 seconds
+</script>
+</body>
+</html>
