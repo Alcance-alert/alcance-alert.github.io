@@ -973,87 +973,36 @@ async function fetchSinglePrice(symbol) {
 }
 
 // =====================
-// FETCH FUNDAMENTALS (Hybrid: TwelveData for RSI/Volume, Yahoo for P/E/Beta/52W)
+// FETCH FUNDAMENTALS (TwelveData - Volume + RSI, free plan)
 // =====================
 async function fetchFundamentals(symbol) {
-  const TWELVEDATA = '4efcbc0be7524241be232f13d9013873';
+  const TD = '4efcbc0be7524241be232f13d9013873';
 
   try {
-    // 1. Yahoo Finance v8 — Volume, P/E, Beta, 52W High/Low (free, via proxy)
-    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`;
-    const proxies = [
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
-      `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
-    ];
-    for (const proxyUrl of proxies) {
-      try {
-        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
-        if (!res.ok) continue;
-        const data = await res.json();
-        const meta = data?.chart?.result?.[0]?.meta;
-        if (meta && prices[symbol]) {
-          prices[symbol].volume  = meta.regularMarketVolume || null;
-          prices[symbol].high52  = meta.fiftyTwoWeekHigh || null;
-          prices[symbol].low52   = meta.fiftyTwoWeekLow  || null;
-        }
-        // Also grab P/E and Beta from Yahoo v10 summary
-        break;
-      } catch(e) { continue; }
-    }
-    await new Promise(r => setTimeout(r, 200));
-
-    // 2. Yahoo Finance v10 — P/E and Beta (free, via proxy)
-    const summaryUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=defaultKeyStatistics,summaryDetail`;
-    const summaryProxies = [
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(summaryUrl)}`,
-      `https://corsproxy.io/?${encodeURIComponent(summaryUrl)}`,
-    ];
-    for (const proxyUrl of summaryProxies) {
-      try {
-        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
-        if (!res.ok) continue;
-        const data = await res.json();
-        const ks = data?.quoteSummary?.result?.[0]?.defaultKeyStatistics;
-        const sd = data?.quoteSummary?.result?.[0]?.summaryDetail;
-        if (prices[symbol]) {
-          prices[symbol].beta = ks?.beta?.raw || sd?.beta?.raw || null;
-          prices[symbol].pe   = sd?.trailingPE?.raw || ks?.trailingPE?.raw || null;
-        }
-        break;
-      } catch(e) { continue; }
-    }
-    await new Promise(r => setTimeout(r, 200));
-
-    // 3. TwelveData RSI 14 (uses ~1 credit per symbol per day since it's EOD)
-    const rsiUrl = `https://api.twelvedata.com/rsi?symbol=${symbol}&interval=1day&time_period=14&outputsize=1&apikey=${TWELVEDATA}`;
-    try {
-      const rsiRes = await fetch(rsiUrl, { signal: AbortSignal.timeout(10000) });
-      if (rsiRes.ok) {
-        const rsiData = await rsiRes.json();
-        if (rsiData?.values?.[0]?.rsi && prices[symbol]) {
-          prices[symbol].rsi = parseFloat(rsiData.values[0].rsi);
+    // 1. TwelveData Quote — Volume + 52W High/Low
+    const quoteUrl = `https://api.twelvedata.com/quote?symbol=${symbol}&apikey=${TD}`;
+    const qRes = await fetch(quoteUrl, { signal: AbortSignal.timeout(12000) });
+    if (qRes.ok) {
+      const q = await qRes.json();
+      if (q && !q.code && prices[symbol]) {
+        prices[symbol].volume = q.volume ? parseInt(q.volume) : null;
+        if (q.fifty_two_week) {
+          prices[symbol].high52 = q.fifty_two_week.high ? parseFloat(q.fifty_two_week.high) : null;
+          prices[symbol].low52  = q.fifty_two_week.low  ? parseFloat(q.fifty_two_week.low)  : null;
         }
       }
-    } catch(e) {}
-    await new Promise(r => setTimeout(r, 300));
+    }
+    await new Promise(r => setTimeout(r, 500));
 
-    // 4. TwelveData News
-    try {
-      const newsUrl = `https://api.twelvedata.com/news?symbol=${symbol}&apikey=${TWELVEDATA}`;
-      const nRes = await fetch(newsUrl, { signal: AbortSignal.timeout(10000) });
-      if (nRes.ok) {
-        const nData = await nRes.json();
-        if (Array.isArray(nData?.data) && nData.data.length > 0 && prices[symbol]) {
-          prices[symbol].news = nData.data.slice(0, 3).map(n => ({
-            headline: n.title,
-            url: n.url,
-            source: n.source,
-            datetime: new Date(n.published_at).getTime() / 1000,
-            summary: n.summary || ''
-          }));
-        }
+    // 2. TwelveData RSI 14
+    const rsiUrl = `https://api.twelvedata.com/rsi?symbol=${symbol}&interval=1day&time_period=14&outputsize=1&apikey=${TD}`;
+    const rsiRes = await fetch(rsiUrl, { signal: AbortSignal.timeout(12000) });
+    if (rsiRes.ok) {
+      const rsiData = await rsiRes.json();
+      if (rsiData?.values?.[0]?.rsi && prices[symbol]) {
+        prices[symbol].rsi = parseFloat(rsiData.values[0].rsi);
       }
-    } catch(e) {}
+    }
 
   } catch(e) {
     console.log(`Fundamentals error for ${symbol}:`, e.message);
