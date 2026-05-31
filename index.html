@@ -935,12 +935,12 @@ async function fetchAllFundamentals(symbolList) {
   }
 }
 
-// Refresh fundamentals every 5 minutes separately
+// Refresh fundamentals every 10 minutes separately
 setInterval(async () => {
   const symbolList = tickers.map(t => t.symbol);
   await fetchAllFundamentals(symbolList);
   render();
-}, 5 * 60 * 1000);
+}, 10 * 60 * 1000);
 
 async function fetchSinglePrice(symbol) {
   // Method 1: Yahoo Finance via multiple CORS proxies
@@ -973,64 +973,87 @@ async function fetchSinglePrice(symbol) {
 }
 
 // =====================
-// FETCH FUNDAMENTALS (TwelveData - Volume, RSI, P/E, Beta, News)
+// FETCH FUNDAMENTALS (Hybrid: TwelveData for RSI/Volume, Yahoo for P/E/Beta/52W)
 // =====================
 async function fetchFundamentals(symbol) {
   const TWELVEDATA = '4efcbc0be7524241be232f13d9013873';
-  if (!TWELVEDATA) return;
 
   try {
-    // 1. TwelveData Quote - price, volume, 52W high/low, change
-    const quoteUrl = `https://api.twelvedata.com/quote?symbol=${symbol}&apikey=${TWELVEDATA}`;
-    const qRes = await fetch(quoteUrl, { signal: AbortSignal.timeout(10000) });
-    if (qRes.ok) {
-      const qData = await qRes.json();
-      if (qData && !qData.status?.includes('error') && prices[symbol]) {
-        prices[symbol].volume  = qData.volume ? parseInt(qData.volume) : null;
-        prices[symbol].high52  = qData.fifty_two_week?.high ? parseFloat(qData.fifty_two_week.high) : null;
-        prices[symbol].low52   = qData.fifty_two_week?.low  ? parseFloat(qData.fifty_two_week.low)  : null;
-      }
+    // 1. Yahoo Finance v8 — Volume, P/E, Beta, 52W High/Low (free, via proxy)
+    const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`;
+    const proxies = [
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`,
+      `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
+    ];
+    for (const proxyUrl of proxies) {
+      try {
+        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) continue;
+        const data = await res.json();
+        const meta = data?.chart?.result?.[0]?.meta;
+        if (meta && prices[symbol]) {
+          prices[symbol].volume  = meta.regularMarketVolume || null;
+          prices[symbol].high52  = meta.fiftyTwoWeekHigh || null;
+          prices[symbol].low52   = meta.fiftyTwoWeekLow  || null;
+        }
+        // Also grab P/E and Beta from Yahoo v10 summary
+        break;
+      } catch(e) { continue; }
     }
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 200));
 
-    // 2. TwelveData RSI 14
-    const rsiUrl = `https://api.twelvedata.com/rsi?symbol=${symbol}&interval=1day&time_period=14&apikey=${TWELVEDATA}`;
-    const rsiRes = await fetch(rsiUrl, { signal: AbortSignal.timeout(10000) });
-    if (rsiRes.ok) {
-      const rsiData = await rsiRes.json();
-      if (rsiData?.values?.[0]?.rsi && prices[symbol]) {
-        prices[symbol].rsi = parseFloat(rsiData.values[0].rsi);
-      }
+    // 2. Yahoo Finance v10 — P/E and Beta (free, via proxy)
+    const summaryUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=defaultKeyStatistics,summaryDetail`;
+    const summaryProxies = [
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(summaryUrl)}`,
+      `https://corsproxy.io/?${encodeURIComponent(summaryUrl)}`,
+    ];
+    for (const proxyUrl of summaryProxies) {
+      try {
+        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) continue;
+        const data = await res.json();
+        const ks = data?.quoteSummary?.result?.[0]?.defaultKeyStatistics;
+        const sd = data?.quoteSummary?.result?.[0]?.summaryDetail;
+        if (prices[symbol]) {
+          prices[symbol].beta = ks?.beta?.raw || sd?.beta?.raw || null;
+          prices[symbol].pe   = sd?.trailingPE?.raw || ks?.trailingPE?.raw || null;
+        }
+        break;
+      } catch(e) { continue; }
     }
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 200));
 
-    // 3. TwelveData Statistics - PE, Beta
-    const statsUrl = `https://api.twelvedata.com/statistics?symbol=${symbol}&apikey=${TWELVEDATA}`;
-    const statsRes = await fetch(statsUrl, { signal: AbortSignal.timeout(10000) });
-    if (statsRes.ok) {
-      const statsData = await statsRes.json();
-      if (statsData && !statsData.status?.includes('error') && prices[symbol]) {
-        prices[symbol].pe   = statsData.valuations_metrics?.trailing_pe ? parseFloat(statsData.valuations_metrics.trailing_pe) : null;
-        prices[symbol].beta = statsData.stock_statistics?.beta ? parseFloat(statsData.stock_statistics.beta) : null;
+    // 3. TwelveData RSI 14 (uses ~1 credit per symbol per day since it's EOD)
+    const rsiUrl = `https://api.twelvedata.com/rsi?symbol=${symbol}&interval=1day&time_period=14&outputsize=1&apikey=${TWELVEDATA}`;
+    try {
+      const rsiRes = await fetch(rsiUrl, { signal: AbortSignal.timeout(10000) });
+      if (rsiRes.ok) {
+        const rsiData = await rsiRes.json();
+        if (rsiData?.values?.[0]?.rsi && prices[symbol]) {
+          prices[symbol].rsi = parseFloat(rsiData.values[0].rsi);
+        }
       }
-    }
+    } catch(e) {}
     await new Promise(r => setTimeout(r, 300));
 
     // 4. TwelveData News
-    const newsUrl = `https://api.twelvedata.com/news?symbol=${symbol}&apikey=${TWELVEDATA}`;
-    const nRes = await fetch(newsUrl, { signal: AbortSignal.timeout(10000) });
-    if (nRes.ok) {
-      const nData = await nRes.json();
-      if (Array.isArray(nData?.data) && nData.data.length > 0 && prices[symbol]) {
-        prices[symbol].news = nData.data.slice(0, 3).map(n => ({
-          headline: n.title,
-          url: n.url,
-          source: n.source,
-          datetime: new Date(n.published_at).getTime() / 1000,
-          summary: n.summary || ''
-        }));
+    try {
+      const newsUrl = `https://api.twelvedata.com/news?symbol=${symbol}&apikey=${TWELVEDATA}`;
+      const nRes = await fetch(newsUrl, { signal: AbortSignal.timeout(10000) });
+      if (nRes.ok) {
+        const nData = await nRes.json();
+        if (Array.isArray(nData?.data) && nData.data.length > 0 && prices[symbol]) {
+          prices[symbol].news = nData.data.slice(0, 3).map(n => ({
+            headline: n.title,
+            url: n.url,
+            source: n.source,
+            datetime: new Date(n.published_at).getTime() / 1000,
+            summary: n.summary || ''
+          }));
+        }
       }
-    }
+    } catch(e) {}
 
   } catch(e) {
     console.log(`Fundamentals error for ${symbol}:`, e.message);
@@ -1915,7 +1938,7 @@ function toggleGlossary() {
 // =====================
 updateMarketStatus();
 refreshPrices();
-setInterval(refreshPrices, 15000); // refresh every 60 seconds
+setInterval(refreshPrices, 10000); // refresh prices every 10 seconds
 setInterval(updateMarketStatus, 1000); // every second for countdown
 setInterval(checkMarketBell, 10000); // check every 10 seconds
 </script>
