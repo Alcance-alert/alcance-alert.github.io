@@ -973,116 +973,65 @@ async function fetchSinglePrice(symbol) {
 }
 
 // =====================
-// FETCH FUNDAMENTALS (Yahoo Finance - Volume, RSI, P/E, Beta)
+// FETCH FUNDAMENTALS (TwelveData - Volume, RSI, P/E, Beta, News)
 // =====================
 async function fetchFundamentals(symbol) {
-  const FINNHUB = 'd85nvihr01qitd92v2s0d85nvihr01qitd92v2sg';
-  if (!FINNHUB) return;
+  const TWELVEDATA = '4efcbc0be7524241be232f13d9013873';
+  if (!TWELVEDATA) return;
 
   try {
-    // 1. Finnhub Quote - get volume
-    const quoteUrl = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB}`;
-    const qRes = await fetch(quoteUrl, { signal: AbortSignal.timeout(8000) });
+    // 1. TwelveData Quote - price, volume, 52W high/low, change
+    const quoteUrl = `https://api.twelvedata.com/quote?symbol=${symbol}&apikey=${TWELVEDATA}`;
+    const qRes = await fetch(quoteUrl, { signal: AbortSignal.timeout(10000) });
     if (qRes.ok) {
       const qData = await qRes.json();
-      if (prices[symbol] && qData) {
-        prices[symbol].volume = qData.v || null;
+      if (qData && !qData.status?.includes('error') && prices[symbol]) {
+        prices[symbol].volume  = qData.volume ? parseInt(qData.volume) : null;
+        prices[symbol].high52  = qData.fifty_two_week?.high ? parseFloat(qData.fifty_two_week.high) : null;
+        prices[symbol].low52   = qData.fifty_two_week?.low  ? parseFloat(qData.fifty_two_week.low)  : null;
       }
     }
-    await new Promise(r => setTimeout(r, 150));
+    await new Promise(r => setTimeout(r, 300));
 
-    // 2. Finnhub Basic Financials - get PE, Beta, 52W high/low
-    const metricUrl = `https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${FINNHUB}`;
-    const mRes = await fetch(metricUrl, { signal: AbortSignal.timeout(8000) });
-    if (mRes.ok) {
-      const mData = await mRes.json();
-      const m = mData?.metric || {};
-      if (prices[symbol]) {
-        prices[symbol].pe     = m['peBasicExclExtraTTM'] || m['peTTM'] || null;
-        prices[symbol].beta   = m['beta'] || null;
-        prices[symbol].high52 = m['52WeekHigh'] || null;
-        prices[symbol].low52  = m['52WeekLow'] || null;
-        prices[symbol].avgVolume = m['10DayAverageTradingVolume'] || null;
+    // 2. TwelveData RSI 14
+    const rsiUrl = `https://api.twelvedata.com/rsi?symbol=${symbol}&interval=1day&time_period=14&apikey=${TWELVEDATA}`;
+    const rsiRes = await fetch(rsiUrl, { signal: AbortSignal.timeout(10000) });
+    if (rsiRes.ok) {
+      const rsiData = await rsiRes.json();
+      if (rsiData?.values?.[0]?.rsi && prices[symbol]) {
+        prices[symbol].rsi = parseFloat(rsiData.values[0].rsi);
       }
     }
-    await new Promise(r => setTimeout(r, 150));
+    await new Promise(r => setTimeout(r, 300));
 
-    // 3. Finnhub Candles - calculate RSI 14
-    const to = Math.floor(Date.now() / 1000);
-    const from = to - (60 * 60 * 24 * 60); // 60 days
-    const candleUrl = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB}`;
-    const cRes = await fetch(candleUrl, { signal: AbortSignal.timeout(8000) });
-    if (cRes.ok) {
-      const cData = await cRes.json();
-      if (cData?.c && cData.c.length >= 15) {
-        prices[symbol].rsi = calcRSI(cData.c, 14);
+    // 3. TwelveData Statistics - PE, Beta
+    const statsUrl = `https://api.twelvedata.com/statistics?symbol=${symbol}&apikey=${TWELVEDATA}`;
+    const statsRes = await fetch(statsUrl, { signal: AbortSignal.timeout(10000) });
+    if (statsRes.ok) {
+      const statsData = await statsRes.json();
+      if (statsData && !statsData.status?.includes('error') && prices[symbol]) {
+        prices[symbol].pe   = statsData.valuations_metrics?.trailing_pe ? parseFloat(statsData.valuations_metrics.trailing_pe) : null;
+        prices[symbol].beta = statsData.stock_statistics?.beta ? parseFloat(statsData.stock_statistics.beta) : null;
       }
     }
-    await new Promise(r => setTimeout(r, 150));
+    await new Promise(r => setTimeout(r, 300));
 
-    // 4. Finnhub News - get latest news for this ticker
-    const newsFrom = new Date(); newsFrom.setDate(newsFrom.getDate() - 7);
-    const newsFromStr = newsFrom.toISOString().split('T')[0];
-    const newsToStr = new Date().toISOString().split('T')[0];
-    const newsUrl = `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${newsFromStr}&to=${newsToStr}&token=${FINNHUB}`;
-    const nRes = await fetch(newsUrl, { signal: AbortSignal.timeout(8000) });
+    // 4. TwelveData News
+    const newsUrl = `https://api.twelvedata.com/news?symbol=${symbol}&apikey=${TWELVEDATA}`;
+    const nRes = await fetch(newsUrl, { signal: AbortSignal.timeout(10000) });
     if (nRes.ok) {
       const nData = await nRes.json();
-      if (Array.isArray(nData) && nData.length > 0) {
-        prices[symbol].news = nData.slice(0, 3).map(n => ({
-          headline: n.headline,
+      if (Array.isArray(nData?.data) && nData.data.length > 0 && prices[symbol]) {
+        prices[symbol].news = nData.data.slice(0, 3).map(n => ({
+          headline: n.title,
           url: n.url,
           source: n.source,
-          datetime: n.datetime,
-          summary: n.summary
+          datetime: new Date(n.published_at).getTime() / 1000,
+          summary: n.summary || ''
         }));
       }
     }
-    await new Promise(r => setTimeout(r, 150));
 
-    // 5. Finnhub Company Profile
-    const profileUrl = `https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB}`;
-    const pRes = await fetch(profileUrl, { signal: AbortSignal.timeout(8000) });
-    if (pRes.ok) {
-      const pData = await pRes.json();
-      if (pData && pData.name && prices[symbol]) {
-        prices[symbol].profile = {
-          name: pData.name,
-          ceo: pData.ceo || null,
-          employees: pData.employeeTotal || null,
-          founded: pData.ipo ? pData.ipo.split('-')[0] : null,
-          country: pData.country || null,
-          city: pData.city || null,
-          marketCap: pData.marketCapitalization || null,
-          industry: pData.finnhubIndustry || null,
-          website: pData.weburl || null,
-          logo: pData.logo || null
-        };
-      }
-    }
-    await new Promise(r => setTimeout(r, 150));
-
-    // 6. Finnhub Recommendation Trends (Bullish/Bearish)
-    const recUrl = `https://finnhub.io/api/v1/stock/recommendation?symbol=${symbol}&token=${FINNHUB}`;
-    const rRes = await fetch(recUrl, { signal: AbortSignal.timeout(8000) });
-    if (rRes.ok) {
-      const rData = await rRes.json();
-      if (Array.isArray(rData) && rData.length > 0) {
-        const latest = rData[0];
-        const buy = (latest.buy || 0) + (latest.strongBuy || 0);
-        const sell = (latest.sell || 0) + (latest.strongSell || 0);
-        const hold = latest.hold || 0;
-        const total = buy + sell + hold;
-        if (total > 0 && prices[symbol]) {
-          if (buy / total >= 0.55) prices[symbol].sentiment = 'BULLISH';
-          else if (sell / total >= 0.4) prices[symbol].sentiment = 'BEARISH';
-          else prices[symbol].sentiment = 'NEUTRAL';
-          prices[symbol].recBuy = buy;
-          prices[symbol].recSell = sell;
-          prices[symbol].recHold = hold;
-        }
-      }
-    }
   } catch(e) {
     console.log(`Fundamentals error for ${symbol}:`, e.message);
   }
@@ -1696,10 +1645,14 @@ function getNextMarketOpen(from) {
 }
 
 function formatDayName(date) {
-  const et = toET(date);
-  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${days[et.getDay()]} ${months[et.getMonth()]} ${et.getDate()}`;
+  // Always format in ET timezone to avoid off-by-one day bugs
+  const etStr = date.toLocaleDateString('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric'
+  });
+  return etStr;
 }
 
 function updateMarketStatus() {
@@ -1713,81 +1666,75 @@ function updateMarketStatus() {
 
   const badge = document.getElementById('marketStatusBadge');
   const countdown = document.getElementById('marketCountdown');
+  if (!badge || !countdown) return;
 
   const todayIsMarketDay = isMarketDay(now);
   const isOpen = todayIsMarketDay && timeET >= 9.5 && timeET < 16;
 
-  function fmtCountdown(diff) {
-    const h = Math.floor(diff / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    const s = Math.floor((diff % 60000) / 1000);
+  function fmtCountdown(ms) {
+    if (ms <= 0) return '0h 0m 0s';
+    const h = Math.floor(ms / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
     return `${h}h ${m}m ${s}s`;
   }
 
   if (isOpen) {
-    // 🟢 MARKET OPEN — countdown to 4:00 PM ET
     badge.innerHTML = '🟢 MARKET OPEN';
     badge.style.color = '#00c805';
-    const closeET = new Date(now);
-    const etClose = toET(closeET);
-    etClose.setHours(16, 0, 0, 0);
-    const diffToClose = etClose - etNow;
-    countdown.textContent = `Closes in ${fmtCountdown(diffToClose)}`;
+
+    // Countdown to 4:00 PM ET today
+    const closeStr = etNow.toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+    const closeTime = new Date(`${new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' }).replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2')}T16:00:00`);
+    // Simple approach: seconds until 4pm ET
+    const secondsToClose = (16 - timeET) * 3600;
+    countdown.textContent = `Closes in ${fmtCountdown(secondsToClose * 1000)}`;
     countdown.style.color = '#00c805';
 
   } else {
     badge.innerHTML = '🔴 MARKET CLOSED';
     badge.style.color = '#ff3b30';
 
-    // Determine if countdown should show or just a label
-    // Show countdown if:
-    // - Weekday after close (Mon-Thu after 4PM, or Fri... no)
-    // - Sunday after 4PM ET
-    const isSunday = day === 0;
-    const isSaturday = day === 6;
-    const isFriday = day === 5;
-    const isWeekdayAfterClose = todayIsMarketDay && timeET >= 16;
-    const isSundayAfterFour = isSunday && timeET >= 16;
+    // Find next market open day
+    let tries = 1;
+    let nextOpenFound = false;
+    while (tries <= 10) {
+      const testDate = new Date(now);
+      testDate.setDate(now.getDate() + tries);
+      if (isMarketDay(testDate)) {
+        const label = formatDayName(testDate);
 
-    const showCountdown = isWeekdayAfterClose && !isFriday || isSundayAfterFour;
+        // Check if next open is within 24h — show countdown
+        // Today before 9:30 AM ET on a market day = opens today
+        const isToday = tries === 1 || (tries === 0);
+        const opensToday = todayIsMarketDay && timeET < 9.5;
 
-    if (showCountdown) {
-      // Find next market open (tomorrow or Monday)
-      const nextOpen = new Date(now);
-      const etNext = toET(nextOpen);
-      etNext.setDate(etNext.getDate() + 1);
-      // Skip non-market days
-      let tries = 0;
-      while (tries < 10) {
-        const testDate = new Date(now);
-        testDate.setDate(now.getDate() + tries + 1);
-        if (isMarketDay(testDate)) {
-          const ds = dateStr(testDate);
-          // Create 9:30 AM ET for that day
-          // We'll compute diff using ET times
-          const etTarget = toET(testDate);
-          etTarget.setHours(9, 30, 0, 0);
-          const diff = etTarget - etNow;
-          countdown.textContent = `Opens in ${fmtCountdown(diff)}`;
-          countdown.style.color = '#ff3b30';
-          break;
+        if (opensToday) {
+          // Opens today — show countdown
+          const secondsToOpen = (9.5 - timeET) * 3600;
+          countdown.textContent = `Opens in ${fmtCountdown(secondsToOpen * 1000)}`;
+        } else {
+          // Check if next open day is tomorrow (within ~24h)
+          const hoursUntil = (tries * 24) - timeET + 9.5;
+          if (hoursUntil <= 24) {
+            const msUntil = hoursUntil * 3600 * 1000;
+            countdown.textContent = `Opens in ${fmtCountdown(msUntil)}`;
+          } else {
+            countdown.textContent = `Opens ${label} 9:30 AM ET`;
+          }
         }
-        tries++;
+        countdown.style.color = '#ff3b30';
+        nextOpenFound = true;
+        break;
       }
-    } else {
-      // Show next market open date/day
-      let tries = 1;
-      while (tries < 10) {
-        const testDate = new Date(now);
-        testDate.setDate(now.getDate() + tries);
-        if (isMarketDay(testDate)) {
-          const label = formatDayName(testDate);
-          countdown.textContent = `Opens ${label} 9:30 AM ET`;
-          countdown.style.color = '#ff3b30';
-          break;
-        }
-        tries++;
-      }
+      tries++;
+    }
+
+    // Handle today opens before market hours
+    if (!nextOpenFound && todayIsMarketDay && timeET < 9.5) {
+      const secondsToOpen = (9.5 - timeET) * 3600;
+      countdown.textContent = `Opens in ${fmtCountdown(secondsToOpen * 1000)}`;
+      countdown.style.color = '#ff3b30';
     }
   }
 }
