@@ -1276,11 +1276,51 @@ function render() {
   container.innerHTML = html;
 
   // Restore panels that were open before the re-render
+  // Use direct DOM manipulation (not toggle) to avoid flicker and unwanted close
   tickers.forEach(t => {
     const state = openPanels[t.symbol];
     if (!state) return;
-    if (state.company) toggleCompany(t.symbol);
-    if (state.news) toggleNews(t.symbol);
+
+    if (state.company) {
+      const panel = document.getElementById(`companyPanel_${t.symbol}`);
+      const arrow = document.getElementById(`companyArrow_${t.symbol}`);
+      if (panel) {
+        panel.style.display = 'block';
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+        // Re-populate content (panel was rebuilt by render)
+        const db = COMPANY_DB[t.symbol];
+        if (db) {
+          const R = { 'BLUE CHIP':{c:'#00c805',bg:'rgba(0,200,5,0.12)',i:'🏆'}, 'STRONG':{c:'#4a9eff',bg:'rgba(74,158,255,0.12)',i:'💪'}, 'GROWTH':{c:'#ffd700',bg:'rgba(255,215,0,0.12)',i:'⚡'}, 'SPECULATIVE':{c:'#ff3b30',bg:'rgba(255,59,48,0.12)',i:'🎲'} };
+          const S = { 'BULLISH':{c:'#00c805',bg:'rgba(0,200,5,0.12)',i:'🟢'}, 'BEARISH':{c:'#ff3b30',bg:'rgba(255,59,48,0.12)',i:'🔴'}, 'NEUTRAL':{c:'#ffd700',bg:'rgba(255,215,0,0.12)',i:'🟡'} };
+          const r = R[db.rating] || R['GROWTH'];
+          const s = S[db.sentiment] || S['NEUTRAL'];
+          panel.innerHTML = `<div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;"><span style="background:${r.bg};color:${r.c};font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid ${r.c}40;">${r.i} ${db.rating}</span><span style="background:${s.bg};color:${s.c};font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;border:1px solid ${s.c}40;">${s.i} ${db.sentiment}</span></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"><div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.5px;">CEO</div><div style="font-size:11px;color:#e0e0e0;margin-top:2px;">${db.ceo}</div></div><div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.5px;">Founded</div><div style="font-size:11px;color:#e0e0e0;margin-top:2px;">${db.founded}</div></div><div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.5px;">Employees</div><div style="font-size:11px;color:#e0e0e0;margin-top:2px;">${db.employees}</div></div><div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.5px;">HQ</div><div style="font-size:11px;color:#e0e0e0;margin-top:2px;">${db.city}, ${db.country}</div></div><div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.5px;">Market Cap</div><div style="font-size:11px;color:#e0e0e0;margin-top:2px;">${db.marketCap}</div></div><div><div style="font-size:9px;color:#555;text-transform:uppercase;letter-spacing:0.5px;">Industry</div><div style="font-size:11px;color:#e0e0e0;margin-top:2px;">${db.industry}</div></div></div>`;
+        } else {
+          panel.innerHTML = '<div style="font-size:11px;color:#555;text-align:center;padding:8px;">No data</div>';
+        }
+      }
+    }
+
+    if (state.news) {
+      const panel = document.getElementById(`newsPanel_${t.symbol}`);
+      const arrow = document.getElementById(`newsArrow_${t.symbol}`);
+      if (panel) {
+        panel.style.display = 'block';
+        if (arrow) arrow.style.transform = 'rotate(180deg)';
+        const p = prices[t.symbol];
+        const news = p?.news;
+        if (news && news.length > 0) {
+          panel.innerHTML = news.map(n => `
+            <a href="${n.url}" target="_blank" style="display:block; padding:8px 14px; text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.04);">
+              <div style="font-size:11px; color:#e0e0e0; line-height:1.4; margin-bottom:3px;">${n.headline}</div>
+              <div style="font-size:9px; color:#555;">${n.source} · ${n.date}</div>
+            </a>`).join('');
+        } else {
+          panel.innerHTML = '<div style="font-size:11px;color:#555;text-align:center;padding:12px;">No recent news available</div>';
+        }
+      }
+    }
+
     if (state.chart) {
       const panel = document.getElementById(`chartPanel_${t.symbol}`);
       const arrow = document.getElementById(`chartArrow_${t.symbol}`);
@@ -1459,6 +1499,36 @@ function toggleCompany(symbol) {
 // =====================
 // NEWS TOGGLE
 // =====================
+// News cache: avoid refetching on every render restore
+const newsCache = {};
+
+async function fetchNewsForSymbol(symbol) {
+  if (newsCache[symbol] && (Date.now() - newsCache[symbol].ts < 15 * 60 * 1000)) {
+    return newsCache[symbol].items; // cache for 15 min
+  }
+  try {
+    // Yahoo Finance RSS via rss2json (free, no key needed)
+    const rssUrl = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${symbol}&region=US&lang=en-US`;
+    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}&count=5`;
+    const res = await fetch(apiUrl, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (data.status !== 'ok' || !data.items) return [];
+    const items = data.items.map(item => ({
+      headline: item.title,
+      url: item.link,
+      source: item.author || 'Yahoo Finance',
+      date: new Date(item.pubDate).toLocaleDateString()
+    }));
+    newsCache[symbol] = { ts: Date.now(), items };
+    // Also store in prices for badge counts
+    if (prices[symbol]) prices[symbol].news = items;
+    return items;
+  } catch(e) {
+    return [];
+  }
+}
+
 function toggleNews(symbol) {
   const panel = document.getElementById(`newsPanel_${symbol}`);
   const arrow = document.getElementById(`newsArrow_${symbol}`);
@@ -1468,28 +1538,32 @@ function toggleNews(symbol) {
   if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
 
   if (!isOpen) {
-    const p = prices[symbol];
-    const news = p?.news;
-    if (news && news.length > 0) {
-      panel.innerHTML = news.map(n => `
+    // Show loading state
+    panel.innerHTML = '<div style="font-size:11px;color:#555;text-align:center;padding:12px;">Loading news...</div>';
+    fetchNewsForSymbol(symbol).then(items => {
+      if (!items || items.length === 0) {
+        panel.innerHTML = '<div style="font-size:11px;color:#555;text-align:center;padding:12px;">No recent news available</div>';
+        return;
+      }
+      panel.innerHTML = items.map(n => `
         <a href="${n.url}" target="_blank" style="display:block; padding:8px 14px; text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.04);">
           <div style="font-size:11px; color:#e0e0e0; line-height:1.4; margin-bottom:3px;">${n.headline}</div>
-          <div style="font-size:9px; color:#555;">${n.source} · ${new Date(n.datetime * 1000).toLocaleDateString()}</div>
+          <div style="font-size:9px; color:#555;">${n.source} · ${n.date}</div>
         </a>`).join('');
-    } else {
-      panel.innerHTML = '<div style="font-size:11px;color:#555;text-align:center;padding:12px;">No recent news available</div>';
-    }
+      updateNewsBadges();
+    });
   }
 }
 
-// Update news badge counts after fundamentals load
+// Update news badge counts
 function updateNewsBadges() {
   tickers.forEach(ticker => {
     const badge = document.getElementById(`newsBadge_${ticker.symbol}`);
     if (!badge) return;
-    const p = prices[ticker.symbol];
-    if (p?.news && p.news.length > 0) {
-      badge.innerHTML = `<span style="font-size:9px; background:rgba(74,158,255,0.15); border-radius:10px; padding:1px 5px;">${p.news.length}</span>`;
+    const cached = newsCache[ticker.symbol];
+    const count = cached?.items?.length || prices[ticker.symbol]?.news?.length || 0;
+    if (count > 0) {
+      badge.innerHTML = `<span style="font-size:9px; background:rgba(74,158,255,0.15); border-radius:10px; padding:1px 5px;">${count}</span>`;
     } else {
       badge.innerHTML = '';
     }
