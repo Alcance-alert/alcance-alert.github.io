@@ -926,11 +926,13 @@ async function fetchPrices() {
 }
 
 async function fetchAllFundamentals(symbolList) {
-  // Split into batches of 5 to respect Finnhub rate limit (60 req/min)
-  // Each symbol = 5 calls, batch of 5 = 25 calls, well under limit
+  // TwelveData free plan: 8 calls/min. Each symbol = 2 calls.
+  // 4 symbols/min max → 15s between symbols to stay safe (4 * 2 = 8 calls/min)
   for (let i = 0; i < symbolList.length; i++) {
     await fetchFundamentals(symbolList[i]);
-    await new Promise(r => setTimeout(r, 800)); // 800ms between symbols = ~6 symbols/min safely
+    if (i < symbolList.length - 1) {
+      await new Promise(r => setTimeout(r, 15000)); // 15s between symbols → 4 sym/min = 8 API calls/min
+    }
     updateNewsBadges();
   }
 }
@@ -974,34 +976,49 @@ async function fetchSinglePrice(symbol) {
 
 // =====================
 // FETCH FUNDAMENTALS (TwelveData - Volume + RSI, free plan)
+// Free plan: 8 calls/min. Each symbol = 2 calls → max 4 symbols/min.
+// fetchAllFundamentals spaces symbols 15s apart (safe buffer).
 // =====================
 async function fetchFundamentals(symbol) {
   const TD = '4efcbc0be7524241be232f13d9013873';
 
-  try {
-    // 1. TwelveData Quote — Volume + 52W High/Low
-    const quoteUrl = `https://api.twelvedata.com/quote?symbol=${symbol}&apikey=${TD}`;
-    const qRes = await fetch(quoteUrl, { signal: AbortSignal.timeout(12000) });
-    if (qRes.ok) {
-      const q = await qRes.json();
-      if (q && !q.code && prices[symbol]) {
-        prices[symbol].volume = q.volume ? parseInt(q.volume) : null;
-        if (q.fifty_two_week) {
-          prices[symbol].high52 = q.fifty_two_week.high ? parseFloat(q.fifty_two_week.high) : null;
-          prices[symbol].low52  = q.fifty_two_week.low  ? parseFloat(q.fifty_two_week.low)  : null;
+  // Wrapper: handles 429 with 60s cooldown + basic retry
+  const tdFetch = async (url, retries = 2) => {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+        if (res.status === 429) {
+          console.warn(`[TwelveData] 429 rate limit on ${symbol} — cooling down 65s...`);
+          await new Promise(r => setTimeout(r, 65000));
+          continue;
         }
+        if (!res.ok) return null;
+        return await res.json();
+      } catch(e) {
+        if (attempt === retries) return null;
+        await new Promise(r => setTimeout(r, 3000));
       }
     }
-    await new Promise(r => setTimeout(r, 500));
+    return null;
+  };
 
-    // 2. TwelveData RSI 14
-    const rsiUrl = `https://api.twelvedata.com/rsi?symbol=${symbol}&interval=1day&time_period=14&outputsize=1&apikey=${TD}`;
-    const rsiRes = await fetch(rsiUrl, { signal: AbortSignal.timeout(12000) });
-    if (rsiRes.ok) {
-      const rsiData = await rsiRes.json();
-      if (rsiData?.values?.[0]?.rsi && prices[symbol]) {
-        prices[symbol].rsi = parseFloat(rsiData.values[0].rsi);
+  try {
+    // Call 1: Quote — Volume + 52W High/Low
+    const q = await tdFetch(`https://api.twelvedata.com/quote?symbol=${symbol}&apikey=${TD}`);
+    if (q && !q.code && prices[symbol]) {
+      prices[symbol].volume = q.volume ? parseInt(q.volume) : null;
+      if (q.fifty_two_week) {
+        prices[symbol].high52 = q.fifty_two_week.high ? parseFloat(q.fifty_two_week.high) : null;
+        prices[symbol].low52  = q.fifty_two_week.low  ? parseFloat(q.fifty_two_week.low)  : null;
       }
+    }
+
+    await new Promise(r => setTimeout(r, 8000)); // 8s gap between calls within same symbol
+
+    // Call 2: RSI 14
+    const rsiData = await tdFetch(`https://api.twelvedata.com/rsi?symbol=${symbol}&interval=1day&time_period=14&outputsize=1&apikey=${TD}`);
+    if (rsiData?.values?.[0]?.rsi && prices[symbol]) {
+      prices[symbol].rsi = parseFloat(rsiData.values[0].rsi);
     }
 
   } catch(e) {
