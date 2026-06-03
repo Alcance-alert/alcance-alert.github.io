@@ -575,6 +575,149 @@ function checkPassword() {
   </div>
 </div>
 <div id="disclaimer-bar" style="background:#0f0f1a;border-top:1px solid rgba(255,107,0,0.15);border-bottom:1px solid rgba(255,107,0,0.15);padding:8px 24px;display:flex;align-items:center;gap:10px;font-size:11px;color:#555566;line-height:1.5;"><span style="color:#FF6B00;font-weight:700;flex-shrink:0;">⚠ DISCLAIMER:</span><span>Alcance Alert is for <strong style="color:#777788;">informational purposes only</strong> and does not constitute financial advice or a recommendation to buy or sell any security. Alert levels are based on user-defined price thresholds and are not predictive of future performance. Always conduct your own due diligence and consult a licensed financial advisor before making investment decisions.</span><button onclick="document.getElementById(chr(39)disclaimer-bar chr(39)).style.display= chr(39)none chr(39)" style="background:none;border:none;color:#333344;cursor:pointer;font-size:14px;margin-left:auto;flex-shrink:0;padding:0;">✕</button></div>
+<!-- MARKET RISK SEMAPHORE -->
+<div id="market-risk-widget" style="background:#0f0f1a;border-bottom:1px solid rgba(255,255,255,0.06);padding:16px 24px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+    
+    <!-- LEFT: Overall status -->
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div id="risk-dot" style="width:18px;height:18px;border-radius:50%;background:#555;flex-shrink:0;box-shadow:0 0 8px rgba(0,0,0,0.5);transition:all 0.5s;"></div>
+      <div>
+        <div style="font-size:10px;color:#555566;letter-spacing:1px;font-weight:700;">MARKET RISK</div>
+        <div id="risk-label" style="font-size:14px;font-weight:900;letter-spacing:1px;color:#888;font-family:'DM Sans',sans-serif;">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Individual indicators -->
+    <div style="display:flex;gap:16px;flex-wrap:wrap;">
+      
+      <div style="text-align:center;">
+        <div style="font-size:9px;color:#444455;letter-spacing:0.5px;font-weight:700;margin-bottom:3px;">VIX</div>
+        <div id="ind-vix" style="font-size:12px;font-weight:700;color:#888;">—</div>
+      </div>
+
+      <div style="text-align:center;">
+        <div style="font-size:9px;color:#444455;letter-spacing:0.5px;font-weight:700;margin-bottom:3px;">S&P vs 200MA</div>
+        <div id="ind-sp200" style="font-size:12px;font-weight:700;color:#888;">—</div>
+      </div>
+
+      <div style="text-align:center;">
+        <div style="font-size:9px;color:#444455;letter-spacing:0.5px;font-weight:700;margin-bottom:3px;">PUT/CALL</div>
+        <div id="ind-putcall" style="font-size:12px;font-weight:700;color:#888;">—</div>
+      </div>
+
+      <div style="text-align:center;">
+        <div style="font-size:9px;color:#444455;letter-spacing:0.5px;font-weight:700;margin-bottom:3px;">CAPE</div>
+        <div id="ind-cape" style="font-size:12px;font-weight:700;color:#888;">—</div>
+      </div>
+
+      <div style="text-align:center;">
+        <div style="font-size:9px;color:#444455;letter-spacing:0.5px;font-weight:700;margin-bottom:3px;">BUFFETT IND.</div>
+        <div id="ind-buffett" style="font-size:12px;font-weight:700;color:#888;">—</div>
+      </div>
+
+    </div>
+
+    <!-- Updated time -->
+    <div style="font-size:9px;color:#333344;" id="risk-updated">—</div>
+  </div>
+</div>
+
+<script>
+async function fetchMarketRisk() {
+  const GREEN = '#00C805', YELLOW = '#f59e0b', RED = '#FF3B30', GRAY = '#555566';
+  
+  let scores = [];
+  
+  // --- VIX via Yahoo Finance proxy ---
+  try {
+    const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=1d');
+    const d = await r.json();
+    const vix = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (vix) {
+      const color = vix > 30 ? RED : vix > 20 ? YELLOW : GREEN;
+      const label = vix > 30 ? '🔴' : vix > 20 ? '🟡' : '🟢';
+      document.getElementById('ind-vix').innerHTML = label + ' ' + vix.toFixed(1);
+      document.getElementById('ind-vix').style.color = color;
+      scores.push(vix > 30 ? 2 : vix > 20 ? 1 : 0);
+    }
+  } catch(e) {}
+
+  // --- S&P 500 vs 200MA via Yahoo Finance ---
+  try {
+    const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1y');
+    const d = await r.json();
+    const closes = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(x => x);
+    if (closes && closes.length >= 200) {
+      const current = closes[closes.length - 1];
+      const ma200 = closes.slice(-200).reduce((a,b) => a+b, 0) / 200;
+      const pct = ((current - ma200) / ma200 * 100).toFixed(1);
+      const above = current > ma200;
+      const color = above ? GREEN : RED;
+      const label = above ? '🟢' : '🔴';
+      document.getElementById('ind-sp200').innerHTML = label + ' ' + (above ? '+' : '') + pct + '%';
+      document.getElementById('ind-sp200').style.color = color;
+      scores.push(above ? 0 : 2);
+    }
+  } catch(e) {}
+
+  // --- PUT/CALL via Yahoo (PCALL) ---
+  try {
+    const r = await fetch('https://query1.finance.yahoo.com/v8/finance/chart/%5EPCALL?interval=1d&range=1d');
+    const d = await r.json();
+    const pc = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
+    if (pc) {
+      const color = pc > 1.2 ? RED : pc > 0.9 ? YELLOW : GREEN;
+      const label = pc > 1.2 ? '🔴' : pc > 0.9 ? '🟡' : '🟢';
+      document.getElementById('ind-putcall').innerHTML = label + ' ' + pc.toFixed(2);
+      document.getElementById('ind-putcall').style.color = color;
+      scores.push(pc > 1.2 ? 2 : pc > 0.9 ? 1 : 0);
+    }
+  } catch(e) {
+    // Fallback: show N/A
+    document.getElementById('ind-putcall').innerHTML = 'N/A';
+  }
+
+  // --- CAPE (Shiller PE) — static, updates monthly ---
+  const cape = 37.2; // Update manually each month
+  const capeColor = cape > 35 ? RED : cape > 25 ? YELLOW : GREEN;
+  const capeLabel = cape > 35 ? '🔴' : cape > 25 ? '🟡' : '🟢';
+  document.getElementById('ind-cape').innerHTML = capeLabel + ' ' + cape.toFixed(1);
+  document.getElementById('ind-cape').style.color = capeColor;
+  scores.push(cape > 35 ? 2 : cape > 25 ? 1 : 0);
+
+  // --- Buffett Indicator — static, updates quarterly ---
+  const buffett = 196; // % — Update manually each quarter
+  const buffColor = buffett > 200 ? RED : buffett > 150 ? YELLOW : GREEN;
+  const buffLabel = buffett > 200 ? '🔴' : buffett > 150 ? '🟡' : '🟢';
+  document.getElementById('ind-buffett').innerHTML = buffLabel + ' ' + buffett + '%';
+  document.getElementById('ind-buffett').style.color = buffColor;
+  scores.push(buffett > 200 ? 2 : buffett > 150 ? 1 : 0);
+
+  // --- Overall score ---
+  if (scores.length > 0) {
+    const avg = scores.reduce((a,b) => a+b, 0) / scores.length;
+    const dot = document.getElementById('risk-dot');
+    const lbl = document.getElementById('risk-label');
+    if (avg >= 1.5) {
+      dot.style.background = RED; dot.style.boxShadow = '0 0 12px ' + RED;
+      lbl.textContent = 'HIGH RISK'; lbl.style.color = RED;
+    } else if (avg >= 0.8) {
+      dot.style.background = YELLOW; dot.style.boxShadow = '0 0 12px ' + YELLOW;
+      lbl.textContent = 'ELEVATED'; lbl.style.color = YELLOW;
+    } else {
+      dot.style.background = GREEN; dot.style.boxShadow = '0 0 12px ' + GREEN;
+      lbl.textContent = 'NORMAL'; lbl.style.color = GREEN;
+    }
+  }
+
+  document.getElementById('risk-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+}
+
+fetchMarketRisk();
+setInterval(fetchMarketRisk, 5 * 60 * 1000); // refresh every 5 min
+</script>
+
 <div class="summary-bar">
   <div class="summary-item">
     <div class="num" style="color:#ffd700;" id="watchCount">—</div>
