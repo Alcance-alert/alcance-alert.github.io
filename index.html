@@ -399,7 +399,7 @@
 <!-- HERO -->
 <section class="hero">
   <div class="hero-bg"></div>
-  <div class="hero-grid"></div>
+  <div class="hero-grid"><canvas id="heroCandles" style="width:100%;height:100%;opacity:0.35;"></canvas></div>
   <div class="hero-content">
     <div class="hero-badge fade-up">Now in Beta</div>
     <h1 class="fade-up delay-1">
@@ -713,3 +713,27 @@
 
 </body>
 </html>
+<script>
+// Animated candles on hero canvas
+const canvas = document.getElementById('heroCandles');
+if (canvas) {
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+
+  const candles = Array.from({length: 20}, (_, i) => ({
+    x: i * (canvas.width / 20) + 10,
+    open: Math.random() * 200 + 100,
+    close: Math.random() * 200 + 100,
+    high: 0, low: 0,
+    speed: (Math.random() * 0.5 + 0.1),
+    dir: Math.random() > 0.5 ? 1 : -1
+  }));
+
+  candles.forEach(c => {
+    c.high = Math.max(c.open, c.close) + Math.random() * 30;
+    c.low = Math.min(c.open, c.close) - Math.random() * 30;
+  });
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width,
