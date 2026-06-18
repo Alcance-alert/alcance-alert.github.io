@@ -562,7 +562,7 @@ function checkPassword() {
   <div class="header-top">
     <div class="header-left">
       <h1>Alcance Alert</h1>
-      <div style="font-size:9px; color:#555; font-weight:600; letter-spacing:0.5px; text-transform:uppercase;">by Alcance Aviation & Trade ✈️📈</div>
+      <div style="font-size:9px; color:#555; font-weight:600; letter-spacing:0.5px; text-transform:uppercase;">by Alcance Aviation & Trade 📈</div>
     </div>
     <div style="display:flex; align-items:center; gap:8px;">
       <div style="display:flex; flex-direction:column; align-items:center; background:rgba(255,255,255,0.04); border:1px solid #222; border-radius:8px; padding:4px 10px;">
@@ -868,14 +868,14 @@ setInterval(fetchMarketRisk, 5 * 60 * 1000); // refresh every 5 min
     <div style="width:11px; height:11px; border-radius:50%; background:#ffd700; flex-shrink:0;"></div>
     <div>
       <div style="font-size:10px; font-weight:700; color:#ffd700; letter-spacing:0.3px;">Watch</div>
-      <div style="font-size:9px; color:#444; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Within $10 of target</div>
+      <div style="font-size:9px; color:#444; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Approaching target</div>
     </div>
   </div>
   <div style="flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:8px 12px; background:#111;">
     <div style="width:11px; height:11px; border-radius:50%; background:#ff6b00; flex-shrink:0;"></div>
     <div>
       <div style="font-size:10px; font-weight:700; color:#ff6b00; letter-spacing:0.3px;">Approaching</div>
-      <div style="font-size:9px; color:#444; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Within $5 of target</div>
+      <div style="font-size:9px; color:#444; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Near target</div>
     </div>
   </div>
   <div style="flex:1; min-width:0; display:flex; align-items:center; gap:8px; padding:8px 12px; background:#111;">
@@ -889,7 +889,7 @@ setInterval(fetchMarketRisk, 5 * 60 * 1000); // refresh every 5 min
     <div style="width:11px; height:11px; border-radius:50%; background:#a78bfa; flex-shrink:0;"></div>
     <div>
       <div style="font-size:10px; font-weight:700; color:#a78bfa; letter-spacing:0.3px;">Beyond Alert</div>
-      <div style="font-size:9px; color:#444; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">$5 below target</div>
+      <div style="font-size:9px; color:#444; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Below target</div>
     </div>
   </div>
 </div>
@@ -906,7 +906,7 @@ setInterval(fetchMarketRisk, 5 * 60 * 1000); // refresh every 5 min
     <input class="add-input ticker-in" id="newTicker" placeholder="AAPL" maxlength="6">
     <input class="add-input price-in" id="newAlert" placeholder="$0.00" type="number" step="0.01">
     <select class="add-select" id="newGroup">
-      <option value="Aviation / Defense">✈️ Aviation / Defense</option>
+      <option value="Aviation / Defense"> Aviation / Defense</option>
       <option value="Tech">💻 Tech</option>
       <option value="Speculative">⚡ Speculative</option>
     </select>
@@ -1003,7 +1003,7 @@ setInterval(fetchMarketRisk, 5 * 60 * 1000); // refresh every 5 min
           <span style="font-size:13px;">👀</span>
           <span style="font-size:13px; font-weight:700; color:#ffd700;">KEEP EYE ON</span>
         </div>
-        <div style="font-size:11px; color:#aaa; line-height:1.5;">Price is within $10 of your alert target. Getting interesting — start paying attention. Could be a buying opportunity forming.</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Price is approaching the alert target. Getting interesting — start paying attention. Could be a buying opportunity forming.</div>
       </div>
       <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #ff6b00;">
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
@@ -1017,14 +1017,14 @@ setInterval(fetchMarketRisk, 5 * 60 * 1000); // refresh every 5 min
           <span style="font-size:13px;">🚨</span>
           <span style="font-size:13px; font-weight:700; color:#ff3b30;">ALERT TRIGGERED</span>
         </div>
-        <div style="font-size:11px; color:#aaa; line-height:1.5;">Price has reached your target. This is your buy zone — analyze, confirm your thesis, and decide. Don't act on emotion.</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Price has reached the target. This is your buy zone — analyze, confirm your thesis, and decide. Don't act on emotion.</div>
       </div>
       <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px; border-left:3px solid #a78bfa;">
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
           <span style="font-size:13px;">🟣</span>
           <span style="font-size:13px; font-weight:700; color:#a78bfa;">BEYOND ALERT</span>
         </div>
-        <div style="font-size:11px; color:#aaa; line-height:1.5;">Price dropped more than $5 below your target. Strong selling pressure — reassess your position. Could be a deeper discount opportunity or a warning sign.</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Price dropped below the target. Strong selling pressure — reassess your position. Could be a deeper discount opportunity or a warning sign.</div>
       </div>
     </div>
 
@@ -1158,7 +1158,7 @@ let alertedSymbols = new Set();
 let warningSymbols = new Set();
 
 const GROUPS = [
-  { key: 'Aviation / Defense', icon: '✈️', label: 'Aviation / Defense' },
+  { key: 'Aviation / Defense', icon: '', label: 'Aviation / Defense' },
   { key: 'Tech', icon: '💻', label: 'Tech' },
   { key: 'Speculative', icon: '⚡', label: 'Speculative' },
   { key: 'Required Attention', icon: '⚠️', label: 'Required Attention' },
@@ -1452,7 +1452,7 @@ function render() {
       const changeColor = change >= 0 ? '#00c805' : '#ff3b30';
 
       let tag = '';
-      const groupIcons = { 'Aviation / Defense': '✈️', 'Tech': '💻', 'Speculative': '⚡' };
+      const groupIcons = { 'Aviation / Defense': '', 'Tech': '💻', 'Speculative': '⚡' };
       const groupIcon = groupIcons[ticker.group] || '';
       let extraTags = '';
       if (ticker.required) extraTags += `<span style="font-size:8px; background:rgba(255,107,0,0.15); color:var(--orange); padding:2px 6px; border-radius:4px; font-weight:700; margin-left:4px;">⚠ REQ</span>`;
