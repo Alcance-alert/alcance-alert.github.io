@@ -715,13 +715,44 @@ async function fetchMarketRisk() {
   document.getElementById('ind-cape').style.color = capeColor;
   scores.push(cape > 35 ? 2 : cape > 25 ? 1 : 0);
 
-  // --- Buffett Indicator — static, updates quarterly ---
-  const buffett = 196; // % — Update manually each quarter
-  const buffColor = buffett > 200 ? RED : buffett > 150 ? YELLOW : GREEN;
-  const buffLabel = buffett > 200 ? '🔴' : buffett > 150 ? '🟡' : '🟢';
-  document.getElementById('ind-buffett').innerHTML = buffLabel + ' ' + buffett + '%';
-  document.getElementById('ind-buffett').style.color = buffColor;
-  scores.push(buffett > 200 ? 2 : buffett > 150 ? 1 : 0);
+  // --- Buffett Indicator via FRED API (auto, quarterly) ---
+  // Wilshire 5000 Total Market / GDP * 100
+  try {
+    const FRED_KEY = 'b01a36e279ae03ea2d36eec2978399e8'; // free key
+    const [wilR, gdpR] = await Promise.all([
+      fetch(`https://api.stlouisfed.org/fred/series/observations?series_id=WILL5000PR&sort_order=desc&limit=1&api_key=${FRED_KEY}&file_type=json`),
+      fetch(`https://api.stlouisfed.org/fred/series/observations?series_id=GDP&sort_order=desc&limit=1&api_key=${FRED_KEY}&file_type=json`)
+    ]);
+    const wilData = await wilR.json();
+    const gdpData = await gdpR.json();
+    const wil = parseFloat(wilData?.observations?.[0]?.value);
+    const gdp = parseFloat(gdpData?.observations?.[0]?.value);
+    if (wil && gdp && gdp > 0) {
+      // Wilshire is in billions, GDP in billions
+      const buffett = Math.round((wil / gdp) * 100);
+      const buffColor = buffett > 200 ? RED : buffett > 150 ? YELLOW : GREEN;
+      const buffLabel = buffett > 200 ? '🔴' : buffett > 150 ? '🟡' : '🟢';
+      document.getElementById('ind-buffett').innerHTML = buffLabel + ' ' + buffett + '%';
+      document.getElementById('ind-buffett').style.color = buffColor;
+      scores.push(buffett > 200 ? 2 : buffett > 150 ? 1 : 0);
+    } else {
+      // Fallback to last known value
+      const buffett = 196;
+      const buffColor = buffett > 200 ? RED : buffett > 150 ? YELLOW : GREEN;
+      const buffLabel = buffett > 200 ? '🔴' : buffett > 150 ? '🟡' : '🟢';
+      document.getElementById('ind-buffett').innerHTML = buffLabel + ' ' + buffett + '%*';
+      document.getElementById('ind-buffett').style.color = buffColor;
+      scores.push(buffett > 200 ? 2 : buffett > 150 ? 1 : 0);
+    }
+  } catch(e) {
+    // Fallback to last known value
+    const buffett = 196;
+    const buffColor = buffett > 200 ? RED : buffett > 150 ? YELLOW : GREEN;
+    const buffLabel = buffett > 200 ? '🔴' : buffett > 150 ? '🟡' : '🟢';
+    document.getElementById('ind-buffett').innerHTML = buffLabel + ' ' + buffett + '%*';
+    document.getElementById('ind-buffett').style.color = buffColor;
+    scores.push(buffett > 200 ? 2 : buffett > 150 ? 1 : 0);
+  }
 
   // --- Treasury 10Y Yield via Yahoo Finance ---
   try {
