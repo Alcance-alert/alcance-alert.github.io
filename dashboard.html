@@ -1061,6 +1061,83 @@ setInterval(fetchMarketRisk, 5 * 60 * 1000); // refresh every 5 min
       </div>
     </div>
 
+    <!-- MARKET RISK INDICATORS -->
+    <div style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:10px; margin-top:20px;">📉 Market Risk Indicators</div>
+    <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
+
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">VIX — Volatility Index</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Measures market fear and uncertainty. Known as the "Fear Gauge."<br>
+          <span style="color:#00c805;">🟢 Below 20</span> = Calm market, low fear<br>
+          <span style="color:#ffd700;">🟡 20–30</span> = Elevated uncertainty<br>
+          <span style="color:#ff3b30;">🔴 Above 30</span> = High fear, volatile market
+        </div>
+      </div>
+
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">S&P 500 vs 200MA</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Compares the S&P 500 current price to its 200-day moving average. A key trend indicator.<br>
+          <span style="color:#00c805;">🟢 Above 200MA</span> = Bull trend, healthy market<br>
+          <span style="color:#ff3b30;">🔴 Below 200MA</span> = Bear trend, caution advised
+        </div>
+      </div>
+
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">Put/Call Ratio</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Ratio of put options (bets the market goes down) vs call options (bets it goes up). Reflects market sentiment.<br>
+          <span style="color:#00c805;">🟢 Below 0.9</span> = Bullish sentiment<br>
+          <span style="color:#ffd700;">🟡 0.9–1.2</span> = Neutral/mixed<br>
+          <span style="color:#ff3b30;">🔴 Above 1.2</span> = Bearish sentiment, fear rising
+        </div>
+      </div>
+
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">% Stocks Above 200MA</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Percentage of S&P 500 stocks trading above their 200-day moving average. A breadth indicator — shows how broad the rally or decline really is.<br>
+          <span style="color:#00c805;">🟢 Above 50%</span> = Broad market participation, healthy<br>
+          <span style="color:#ffd700;">🟡 30–50%</span> = Narrowing, only some sectors leading<br>
+          <span style="color:#ff3b30;">🔴 Below 30%</span> = Very weak breadth, high risk
+        </div>
+      </div>
+
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">CAPE — Shiller P/E Ratio</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Cyclically Adjusted P/E ratio using 10-year average earnings. Measures overall market valuation.<br>
+          <span style="color:#00c805;">🟢 Below 25</span> = Fairly valued or undervalued<br>
+          <span style="color:#ffd700;">🟡 25–35</span> = Elevated, proceed with caution<br>
+          <span style="color:#ff3b30;">🔴 Above 35</span> = Historically expensive market
+        </div>
+      </div>
+
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">Buffett Indicator</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Total US stock market cap divided by GDP. Warren Buffett's favorite macro valuation tool.<br>
+          <span style="color:#00c805;">🟢 Below 100%</span> = Undervalued<br>
+          <span style="color:#ffd700;">🟡 100–150%</span> = Fairly valued<br>
+          <span style="color:#ff3b30;">🔴 Above 150%</span> = Overvalued — market cap far exceeds the economy
+        </div>
+      </div>
+
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">10Y Treasury Yield</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Interest rate on 10-year US government bonds. When yields rise, stocks face competition from safer fixed-income returns.<br>
+          <span style="color:#00c805;">🟢 Falling</span> = Good for stocks — money flows from bonds to equities<br>
+          <span style="color:#ffd700;">🟡 Stable</span> = Neutral impact<br>
+          <span style="color:#ff3b30;">🔴 Rising</span> = Pressure on stocks, especially growth/tech
+        </div>
+      </div>
+
+      <div style="background:#0a0a0a; border-radius:10px; padding:12px 14px;">
+        <div style="font-size:12px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">2Y Treasury Yield</div>
+        <div style="font-size:11px; color:#aaa; line-height:1.5;">Interest rate on 2-year US government bonds. Closely tracks Fed policy expectations. When 2Y > 10Y (inverted curve), it has historically preceded recessions.<br>
+          <span style="color:#00c805;">🟢 Falling</span> = Fed may cut rates, bullish signal<br>
+          <span style="color:#ffd700;">🟡 Stable</span> = Neutral<br>
+          <span style="color:#ff3b30;">🔴 Rising AND above 10Y</span> = Inverted curve — recession warning
+        </div>
+      </div>
+
+    </div>
+
     <div style="margin-top:16px; padding:12px 14px; background:rgba(255,107,0,0.06); border-radius:10px; border:1px solid rgba(255,107,0,0.2);">
       <div style="font-size:11px; color:#ff6b00; font-weight:700; margin-bottom:4px;">⚠️ Disclaimer</div>
       <div style="font-size:10px; color:#666; line-height:1.6;">Alcance Alert is for informational purposes only. Nothing here is financial advice. Always do your own research before investing. Past performance does not guarantee future results.</div>
