@@ -1800,21 +1800,22 @@ async function fetchNewsForSymbol(symbol) {
     return newsCache[symbol].items; // cache for 15 min
   }
   try {
-    // Yahoo Finance RSS via rss2json (free, no key needed)
-    const rssUrl = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${symbol}&region=US&lang=en-US`;
-    const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}&count=5`;
-    const res = await fetch(apiUrl, { signal: AbortSignal.timeout(8000) });
+    const FINNHUB_KEY = 'd85nvihr01qitd92v2s0d85nvihr01qitd92v2sg';
+    const today = new Date();
+    const from = new Date(today - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const to = today.toISOString().split('T')[0];
+    const url = `https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${from}&to=${to}&token=${FINNHUB_KEY}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return [];
     const data = await res.json();
-    if (data.status !== 'ok' || !data.items) return [];
-    const items = data.items.map(item => ({
-      headline: item.title,
-      url: item.link,
-      source: item.author || 'Yahoo Finance',
-      date: new Date(item.pubDate).toLocaleDateString()
+    if (!Array.isArray(data) || data.length === 0) return [];
+    const items = data.slice(0, 5).map(item => ({
+      headline: item.headline,
+      url: item.url,
+      source: item.source || 'Finnhub',
+      date: new Date(item.datetime * 1000).toLocaleDateString()
     }));
     newsCache[symbol] = { ts: Date.now(), items };
-    // Also store in prices for badge counts
     if (prices[symbol]) prices[symbol].news = items;
     return items;
   } catch(e) {
