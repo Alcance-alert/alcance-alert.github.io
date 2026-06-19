@@ -1237,6 +1237,15 @@ let tickers = [
   { symbol: 'VVX',  name: 'V2X Inc',                   alert: 63,  group: 'Aviation / Defense', required: false },
   { symbol: 'HEI',  name: 'HEICO',                     alert: 290, group: 'Aviation / Defense', required: false },
   { symbol: 'ICE',  name: 'Intercontinental Exchange', alert: 140, group: 'Tech', required: false },
+  // Manual 4-level tickers (beyond/alert/approaching/watch defined by user)
+  { symbol: 'IONQ', name: 'IonQ',                    alert: 48, beyond: 43, approaching: 53, watch: 55, group: 'Speculative', required: false },
+  { symbol: 'RGTI', name: 'Rigetti Computing',        alert: 17, beyond: 15, approaching: 17, watch: 20, group: 'Speculative', required: false },
+  { symbol: 'SMCI', name: 'Super Micro Computer',     alert: 26, beyond: 23, approaching: 28, watch: 29, group: 'Tech', required: false },
+  { symbol: 'CRCL', name: 'Circle Internet Group',    alert: 63, beyond: 60, approaching: 70, watch: 80, group: 'Tech', required: false },
+  { symbol: 'CRWV', name: 'CoreWeave',                alert: 75, beyond: 69, approaching: 80, watch: 85, group: 'Tech', required: false },
+  { symbol: 'FRVO', name: 'Fervo Energy',             alert: 30, beyond: 26, approaching: 33, watch: 35, group: 'Speculative', required: false },
+  { symbol: 'ALK',  name: 'Alaska Air Group',         alert: 36, beyond: 34, approaching: 37, watch: 38, group: 'Aviation / Defense', required: false },
+  { symbol: 'UAL',  name: 'United Airlines',          alert: 89, beyond: 87, approaching: 92, watch: 95, group: 'Aviation / Defense', required: false },
 ];
 
 let prices = {};
@@ -1435,10 +1444,14 @@ function getStatus(ticker) {
   if (!p) return 'ok';
   const price = p.price;
   const alert = ticker.alert;
-  if (price <= alert - 5) return 'beyond';
+  // Manual thresholds (beyond/approaching/watch) override automatic +/-5/+10 calc
+  const beyondLevel = (ticker.beyond !== undefined) ? ticker.beyond : alert - 5;
+  const approachingLevel = (ticker.approaching !== undefined) ? ticker.approaching : alert + 5;
+  const watchLevel = (ticker.watch !== undefined) ? ticker.watch : alert + 10;
+  if (price <= beyondLevel) return 'beyond';
   if (price <= alert) return 'alert';
-  if (price <= alert + 5) return 'warning';
-  if (price <= alert + 10) return 'watch';
+  if (price <= approachingLevel) return 'warning';
+  if (price <= watchLevel) return 'watch';
   return 'ok';
 }
 
@@ -2028,6 +2041,7 @@ const NYSE_HOLIDAYS = new Set([
   '2026-02-16', // Presidents Day
   '2026-04-03', // Good Friday
   '2026-05-25', // Memorial Day
+  '2026-06-19', // Juneteenth
   '2026-07-03', // Independence Day (observed)
   '2026-09-07', // Labor Day
   '2026-11-26', // Thanksgiving
@@ -2037,6 +2051,7 @@ const NYSE_HOLIDAYS = new Set([
   '2027-02-15', // Presidents Day
   '2027-03-26', // Good Friday
   '2027-05-31', // Memorial Day
+  '2027-06-18', // Juneteenth (observed)
   '2027-07-05', // Independence Day (observed)
   '2027-09-06', // Labor Day
   '2027-11-25', // Thanksgiving
