@@ -1214,20 +1214,20 @@ let tickers = [
   { symbol: 'ATS', name: 'ATS Corporation', alert: 30, group: 'Tech', required: true },
   { symbol: 'SHOP', name: 'Shopify', alert: 98, group: 'Tech', required: false },
   { symbol: 'ZS', name: 'Zscaler', alert: 148, group: 'Tech', required: false },
-  { symbol: 'SNOW', name: 'Snowflake', alert: 150, group: 'Tech', required: false },
-  { symbol: 'ORCL', name: 'Oracle', alert: 150, group: 'Tech', required: false },
+  { symbol: 'SNOW', name: 'Snowflake', alert: 190, group: 'Tech', required: false },
+  { symbol: 'ORCL', name: 'Oracle', alert: 180, group: 'Tech', required: false },
   { symbol: 'PANW', name: 'Palo Alto Networks', alert: 200, group: 'Tech', required: false },
   { symbol: 'VST', name: 'Vistra Corp', alert: 120, group: 'Tech', required: false },
   { symbol: 'AMZN', name: 'Amazon', alert: 230, group: 'Tech', required: false },
   { symbol: 'AAPL', name: 'Apple', alert: 260, group: 'Tech', required: false },
   { symbol: 'MSFT', name: 'Microsoft', alert: 400, group: 'Tech', required: false },
-  { symbol: 'TSLA', name: 'Tesla', alert: 360, group: 'Tech', required: true },
-    { symbol: 'COIN',  name: 'Coinbase',           alert: 190, group: 'Tech',              required: false },
+  { symbol: 'TSLA', name: 'Tesla', alert: 380, group: 'Tech', required: true },
+    { symbol: 'COIN',  name: 'Coinbase',           alert: 180, group: 'Tech',              required: false },
   { symbol: 'TSEM',  name: 'Tower Semiconductor',  alert: 242, group: 'Tech',              required: false },
   // Speculative
   { symbol: 'ASTS', name: 'AST SpaceMobile', alert: 80, group: 'Speculative', required: false },
   { symbol: 'WMT', name: 'Walmart', alert: 120, group: 'Tech', required: false },
-  { symbol: 'ON',  name: 'ON Semiconductor', alert: 85, group: 'Tech', required: false },
+  { symbol: 'ON',  name: 'ON Semiconductor', alert: 110, group: 'Tech', required: false },
   { symbol: 'P',    name: 'Everpure',                  alert: 60,  group: 'Tech', required: false },
   { symbol: 'SYM',  name: 'Symbotic',                  alert: 40,  group: 'Tech', required: false },
   { symbol: 'AMSC', name: 'American Superconductor',   alert: 34,  group: 'Tech', required: false },
@@ -1263,145 +1263,153 @@ const COMPANY_NAMES = {
 };
 
 // =====================
-// FETCH PRICES
+// FETCH PRICES — TwelveData Batch (1 call = todos os tickers)
+// Free plan: 800 calls/day. Batch = 1 call por refresh.
+// A cada 60s = 390 calls/dia → cabe no plano Free com folga.
 // =====================
+const TD = '4efcbc0be7524241be232f13d9013873';
 let fundamentalsLoaded = false;
+let lastFundamentalsTime = 0;
 
 async function fetchPrices() {
   const symbolList = tickers.map(t => t.symbol);
   
-  // Always fetch prices (fast, Yahoo Finance)
-  for (const symbol of symbolList) {
-    await fetchSinglePrice(symbol);
-  }
+  // BATCH: 1 call para todos os tickers
+  await fetchBatchPrices(symbolList);
 
-  // Fundamentals (Volume, RSI, 52W) now fetched inline via Yahoo in fetchSinglePrice
-  // TwelveData disabled to avoid rate limits
+  // Fundamentals (RSI via batch) a cada 10 minutos
+  const now = Date.now();
+  if (!fundamentalsLoaded || now - lastFundamentalsTime > 10 * 60 * 1000) {
+    await fetchBatchRSI(symbolList);
+    lastFundamentalsTime = now;
+    fundamentalsLoaded = true;
+  }
 
   render();
 }
 
-async function fetchAllFundamentals(symbolList) {
-  // TwelveData free plan: 8 calls/min. Each symbol = 2 calls.
-  // 4 symbols/min max → 15s between symbols to stay safe (4 * 2 = 8 calls/min)
-  for (let i = 0; i < symbolList.length; i++) {
-    await fetchFundamentals(symbolList[i]);
-    if (i < symbolList.length - 1) {
-      await new Promise(r => setTimeout(r, 15000)); // 15s between symbols → 4 sym/min = 8 API calls/min
-    }
-    updateNewsBadges();
+async function fetchBatchPrices(symbolList) {
+  // TwelveData batch: até 120 symbols por call, separados por vírgula
+  const chunks = [];
+  for (let i = 0; i < symbolList.length; i += 120) {
+    chunks.push(symbolList.slice(i, i + 120));
   }
-}
 
-// Refresh fundamentals every 10 minutes separately
-setInterval(async () => {
-  const symbolList = tickers.map(t => t.symbol);
-  await fetchAllFundamentals(symbolList);
-  render();
-}, 10 * 60 * 1000);
-
-async function fetchSinglePrice(symbol) {
-  // Yahoo Finance via multiple CORS proxies — also extracts Volume, RSI, 52W H/L
-  const proxies = [
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`)}`,
-    `https://corsproxy.io/?${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`)}`
-  ];
-
-  for (const url of proxies) {
+  for (const chunk of chunks) {
+    const symbols = chunk.join(',');
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) continue;
+      const res = await fetch(
+        `https://api.twelvedata.com/price?symbol=${encodeURIComponent(symbols)}&apikey=${TD}`,
+        { signal: AbortSignal.timeout(15000) }
+      );
+      if (!res.ok) { console.warn('[TD Batch] HTTP', res.status); continue; }
       const data = await res.json();
-      const result = data?.chart?.result?.[0];
-      const meta = result?.meta;
-      if (meta && meta.regularMarketPrice) {
-        const prevClose = meta.chartPreviousClose || meta.previousClose || meta.regularMarketPrice;
-        const currentPrice = meta.regularMarketPrice;
-        const changePct = ((currentPrice - prevClose) / prevClose) * 100;
 
-        // Extract closes for RSI calculation
-        const closes = result?.indicators?.quote?.[0]?.close?.filter(x => x != null) || [];
-        const volumes = result?.indicators?.quote?.[0]?.volume?.filter(x => x != null) || [];
-
-        // Calculate RSI 14
-        let rsi = null;
-        if (closes.length >= 15) {
-          rsi = calcRSI(closes, 14);
+      // Se só 1 symbol, resposta é objeto direto; se múltiplos, é {SYMBOL: {price}}
+      if (chunk.length === 1) {
+        const sym = chunk[0];
+        if (data.price) {
+          const p = parseFloat(data.price);
+          if (!prices[sym]) prices[sym] = {};
+          prices[sym].price = p;
+          prices[sym].change = prices[sym].prevClose
+            ? ((p - prices[sym].prevClose) / prices[sym].prevClose) * 100
+            : 0;
         }
-
-        // Volume (most recent day)
-        const volume = volumes.length > 0 ? volumes[volumes.length - 1] : null;
-
-        // 52W High/Low from closes
-        const high52 = closes.length > 0 ? Math.max(...closes) : null;
-        const low52  = closes.length > 0 ? Math.min(...closes) : null;
-
-        prices[symbol] = {
-          price: currentPrice,
-          change: changePct,
-          volume: volume,
-          rsi: rsi,
-          high52: high52,
-          low52: low52
-        };
-        return; // success
+      } else {
+        for (const sym of chunk) {
+          if (data[sym]?.price) {
+            const p = parseFloat(data[sym].price);
+            if (!prices[sym]) prices[sym] = {};
+            prices[sym].price = p;
+            prices[sym].change = prices[sym].prevClose
+              ? ((p - prices[sym].prevClose) / prices[sym].prevClose) * 100
+              : 0;
+          }
+        }
       }
     } catch(e) {
-      continue;
+      console.warn('[TD Batch prices] erro:', e.message);
+    }
+  }
+
+  // Busca quote (prevClose, volume, 52W) só na primeira carga
+  if (!fundamentalsLoaded) {
+    await fetchBatchQuote(symbolList);
+  }
+}
+
+async function fetchBatchQuote(symbolList) {
+  const chunks = [];
+  for (let i = 0; i < symbolList.length; i += 120) {
+    chunks.push(symbolList.slice(i, i + 120));
+  }
+  for (const chunk of chunks) {
+    const symbols = chunk.join(',');
+    try {
+      const res = await fetch(
+        `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbols)}&apikey=${TD}`,
+        { signal: AbortSignal.timeout(15000) }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+
+      const process = (sym, q) => {
+        if (!q || q.code) return;
+        if (!prices[sym]) prices[sym] = {};
+        const p = parseFloat(q.close || q.price || 0);
+        const prev = parseFloat(q.previous_close || p);
+        prices[sym].price = p;
+        prices[sym].prevClose = prev;
+        prices[sym].change = prev ? ((p - prev) / prev) * 100 : 0;
+        prices[sym].volume = q.volume ? parseInt(q.volume) : null;
+        if (q.fifty_two_week) {
+          prices[sym].high52 = parseFloat(q.fifty_two_week.high) || null;
+          prices[sym].low52  = parseFloat(q.fifty_two_week.low)  || null;
+        }
+      };
+
+      if (chunk.length === 1) {
+        process(chunk[0], data);
+      } else {
+        for (const sym of chunk) process(sym, data[sym]);
+      }
+    } catch(e) {
+      console.warn('[TD Batch quote] erro:', e.message);
     }
   }
 }
 
-// =====================
-// FETCH FUNDAMENTALS (TwelveData - Volume + RSI, free plan)
-// Free plan: 8 calls/min. Each symbol = 2 calls → max 4 symbols/min.
-// fetchAllFundamentals spaces symbols 15s apart (safe buffer).
-// =====================
-async function fetchFundamentals(symbol) {
-  const TD = '4efcbc0be7524241be232f13d9013873';
+async function fetchBatchRSI(symbolList) {
+  // RSI batch: 1 call para todos
+  const chunks = [];
+  for (let i = 0; i < symbolList.length; i += 120) {
+    chunks.push(symbolList.slice(i, i + 120));
+  }
+  for (const chunk of chunks) {
+    const symbols = chunk.join(',');
+    try {
+      const res = await fetch(
+        `https://api.twelvedata.com/rsi?symbol=${encodeURIComponent(symbols)}&interval=1day&time_period=14&outputsize=1&apikey=${TD}`,
+        { signal: AbortSignal.timeout(15000) }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
 
-  // Wrapper: handles 429 with 60s cooldown + basic retry
-  const tdFetch = async (url, retries = 2) => {
-    for (let attempt = 0; attempt <= retries; attempt++) {
-      try {
-        const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-        if (res.status === 429) {
-          console.warn(`[TwelveData] 429 rate limit on ${symbol} — cooling down 65s...`);
-          await new Promise(r => setTimeout(r, 65000));
-          continue;
-        }
-        if (!res.ok) return null;
-        return await res.json();
-      } catch(e) {
-        if (attempt === retries) return null;
-        await new Promise(r => setTimeout(r, 3000));
+      const processRSI = (sym, d) => {
+        if (!d || d.code) return;
+        const val = d.values?.[0]?.rsi;
+        if (val && prices[sym]) prices[sym].rsi = parseFloat(val);
+      };
+
+      if (chunk.length === 1) {
+        processRSI(chunk[0], data);
+      } else {
+        for (const sym of chunk) processRSI(sym, data[sym]);
       }
+    } catch(e) {
+      console.warn('[TD Batch RSI] erro:', e.message);
     }
-    return null;
-  };
-
-  try {
-    // Call 1: Quote — Volume + 52W High/Low
-    const q = await tdFetch(`https://api.twelvedata.com/quote?symbol=${symbol}&apikey=${TD}`);
-    if (q && !q.code && prices[symbol]) {
-      prices[symbol].volume = q.volume ? parseInt(q.volume) : null;
-      if (q.fifty_two_week) {
-        prices[symbol].high52 = q.fifty_two_week.high ? parseFloat(q.fifty_two_week.high) : null;
-        prices[symbol].low52  = q.fifty_two_week.low  ? parseFloat(q.fifty_two_week.low)  : null;
-      }
-    }
-
-    await new Promise(r => setTimeout(r, 8000)); // 8s gap between calls within same symbol
-
-    // Call 2: RSI 14
-    const rsiData = await tdFetch(`https://api.twelvedata.com/rsi?symbol=${symbol}&interval=1day&time_period=14&outputsize=1&apikey=${TD}`);
-    if (rsiData?.values?.[0]?.rsi && prices[symbol]) {
-      prices[symbol].rsi = parseFloat(rsiData.values[0].rsi);
-    }
-
-  } catch(e) {
-    console.log(`Fundamentals error for ${symbol}:`, e.message);
   }
 }
 
@@ -2358,7 +2366,7 @@ function toggleGlossary() {
 // =====================
 updateMarketStatus();
 refreshPrices();
-setInterval(refreshPrices, 10000); // refresh prices every 10 seconds
+setInterval(refreshPrices, 60000); // refresh prices every 60 seconds (TwelveData batch — 390 calls/day)
 setInterval(updateMarketStatus, 1000); // every second for countdown
 setInterval(checkMarketBell, 10000); // check every 10 seconds
 </script>
