@@ -554,15 +554,24 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (user) {
-    // Logado — esconde o gate e mostra o dashboard
     document.getElementById('passwordGate').style.display = 'none';
-    // Mostra email do usuário no header
     const emailEl = document.getElementById('userEmail');
     if (emailEl) emailEl.textContent = user.email || user.displayName || '';
+    let userPlan = 'free';
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      if (!userSnap.exists()) {
+        await setDoc(userRef, { email: user.email || '', plan: 'free', createdAt: new Date().toISOString() });
+      } else {
+        userPlan = userSnap.data().plan || 'free';
+      }
+    } catch(e) { console.warn('Firestore error:', e); }
+    window._userPlan = userPlan;
+    console.log('Plan:', userPlan);
   } else {
-    // Não logado — redireciona para login
     window.location.href = '/login.html';
   }
 });
