@@ -528,37 +528,48 @@
 </head>
 <body>
 
-<!-- PASSWORD GATE -->
+<!-- FIREBASE AUTH GATE -->
 <div id="passwordGate" style="position:fixed; top:0; left:0; right:0; bottom:0; background:#0a0a0a; z-index:9999; display:flex; align-items:center; justify-content:center;">
-  <div style="background:#141414; border:1px solid #2a2a2a; border-radius:16px; padding:40px 32px; width:90%; max-width:320px; text-align:center; box-sizing:border-box;">
-    <svg width="64" height="64" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:8px;">
-  <circle cx="40" cy="40" r="36" fill="none" stroke="#FF6B00" stroke-width="3"/>
-  <polyline points="18,54 30,40 42,46 54,26 66,30" fill="none" stroke="#FF6B00" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="54" cy="26" r="5" fill="#FF6B00"/>
-</svg>
-    <div style="font-size:20px; font-weight:700; color:#f0f0f0; margin-bottom:4px;">Alcance Alert</div>
-    <div style="font-size:12px; color:#555; margin-bottom:24px; text-transform:uppercase; letter-spacing:1px;">by Alcance Aviation & Trade</div>
-    <input id="pwInput" type="password" placeholder="Enter password" 
-      style="width:100%; background:#1c1c1c; border:1px solid #2a2a2a; border-radius:8px; padding:12px 16px; color:#f0f0f0; font-size:16px; outline:none; text-align:center; -webkit-appearance:none; font-family:'DM Mono',monospace; margin-bottom:12px;"
-      onkeydown="if(event.key==='Enter') checkPassword()">
-    <button onclick="checkPassword()" 
-      style="width:100%; background:#ff6b00; color:white; border:none; border-radius:8px; padding:12px; font-size:16px; font-weight:700; cursor:pointer; touch-action:manipulation; -webkit-appearance:none;">
-      ACCESS DASHBOARD
-    </button>
-    <div id="pwError" style="color:#ff3b30; font-size:12px; margin-top:10px; display:none;">❌ Incorrect password</div>
+  <div style="text-align:center; color:#555; font-size:14px;">
+    <div style="width:32px; height:32px; border:2px solid #ff6b00; border-radius:50%; border-top-color:transparent; animation:spin 0.8s linear infinite; margin:0 auto 12px;"></div>
+    Checking authentication...
   </div>
 </div>
 
-<script>
-function checkPassword() {
-  const input = document.getElementById('pwInput').value;
-  if (input === 'Alcancealert1') {
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDA9SxSHUytY6sOUgzGZZxe4BP0fWtsDs8",
+  authDomain: "alcance-alert.firebaseapp.com",
+  projectId: "alcance-alert",
+  storageBucket: "alcance-alert.firebasestorage.app",
+  messagingSenderId: "1055773203578",
+  appId: "1:1055773203578:web:7f2aec1ff5b19627b36fc3"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    // Logado — esconde o gate e mostra o dashboard
     document.getElementById('passwordGate').style.display = 'none';
+    // Mostra email do usuário no header
+    const emailEl = document.getElementById('userEmail');
+    if (emailEl) emailEl.textContent = user.email || user.displayName || '';
   } else {
-    document.getElementById('pwError').style.display = 'block';
-    document.getElementById('pwInput').value = '';
+    // Não logado — redireciona para login
+    window.location.href = '/login.html';
   }
-}
+});
+
+// Função de logout global
+window.doLogout = async function() {
+  await signOut(auth);
+  window.location.href = '/login.html';
+};
 </script>
 
 <div class="alert-toast" id="alertToast">
@@ -578,6 +589,7 @@ function checkPassword() {
         <div class="num" id="totalCount" style="font-size:14px; font-weight:700; color:#fff; line-height:1;">—</div>
         <div style="font-size:8px; color:#555; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; margin-top:2px;">Watching</div>
       </div>
+      <button onclick="doLogout()" style="background:rgba(255,107,0,0.1); border:1px solid rgba(255,107,0,0.3); color:#ff6b00; border-radius:8px; padding:6px 12px; font-size:11px; font-weight:700; cursor:pointer; letter-spacing:0.5px;">LOGOUT</button>
       <div class="live-badge">
         <div class="live-dot"></div>
         LIVE
