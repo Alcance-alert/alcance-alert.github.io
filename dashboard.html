@@ -1299,18 +1299,20 @@ async function fetchPrices() {
 
 async function fetchBatchPrices(symbolList) {
   // TwelveData batch: até 120 symbols por call, separados por vírgula
+  // IMPORTANTE: não usar encodeURIComponent na lista — a vírgula precisa ficar como vírgula
   const chunks = [];
   for (let i = 0; i < symbolList.length; i += 120) {
     chunks.push(symbolList.slice(i, i + 120));
   }
 
   for (const chunk of chunks) {
-    const symbols = chunk.join(',');
+    const symbols = chunk.join(','); // SEM encodeURIComponent
     try {
       const res = await fetch(
-        `https://api.twelvedata.com/price?symbol=${encodeURIComponent(symbols)}&apikey=${TD}`,
+        `https://api.twelvedata.com/price?symbol=${symbols}&apikey=${TD}`,
         { signal: AbortSignal.timeout(15000) }
       );
+      if (res.status === 429) { console.warn('[TD] 429 — créditos esgotados'); continue; }
       if (!res.ok) { console.warn('[TD Batch] HTTP', res.status); continue; }
       const data = await res.json();
 
@@ -1354,12 +1356,13 @@ async function fetchBatchQuote(symbolList) {
     chunks.push(symbolList.slice(i, i + 120));
   }
   for (const chunk of chunks) {
-    const symbols = chunk.join(',');
+    const symbols = chunk.join(','); // SEM encodeURIComponent
     try {
       const res = await fetch(
-        `https://api.twelvedata.com/quote?symbol=${encodeURIComponent(symbols)}&apikey=${TD}`,
+        `https://api.twelvedata.com/quote?symbol=${symbols}&apikey=${TD}`,
         { signal: AbortSignal.timeout(15000) }
       );
+      if (res.status === 429) { console.warn('[TD Quote] 429 — créditos esgotados'); continue; }
       if (!res.ok) return;
       const data = await res.json();
 
@@ -1399,9 +1402,10 @@ async function fetchBatchRSI(symbolList) {
     const symbols = chunk.join(',');
     try {
       const res = await fetch(
-        `https://api.twelvedata.com/rsi?symbol=${encodeURIComponent(symbols)}&interval=1day&time_period=14&outputsize=1&apikey=${TD}`,
+        `https://api.twelvedata.com/rsi?symbol=${symbols}&interval=1day&time_period=14&outputsize=1&apikey=${TD}`,
         { signal: AbortSignal.timeout(15000) }
       );
+      if (res.status === 429) { console.warn('[TD RSI] 429 — créditos esgotados'); continue; }
       if (!res.ok) return;
       const data = await res.json();
 
