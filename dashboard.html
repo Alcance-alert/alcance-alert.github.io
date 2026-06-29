@@ -688,7 +688,7 @@ async function fetchMarketRisk() {
   
   // --- VIX via Yahoo Finance proxy ---
   try {
-    const proxies = [`https://api.allorigins.win/raw?url=${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=1d')}`, `https://corsproxy.io/?${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=1d')}`]; let r; for (const u of proxies) { try { r = await fetch(u, {signal: AbortSignal.timeout(8000)}); if (r.ok) break; } catch(e) {} }
+    const proxies = [`https://thingproxy.freeboard.io/fetch/${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=1d')}`, `https://thingproxy.freeboard.io/fetch/${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?interval=1d&range=1d')}`]; let r; for (const u of proxies) { try { r = await fetch(u, {signal: AbortSignal.timeout(8000)}); if (r.ok) break; } catch(e) {} }
     const d = await r.json();
     const vix = d?.chart?.result?.[0]?.meta?.regularMarketPrice;
     if (vix) {
@@ -702,7 +702,7 @@ async function fetchMarketRisk() {
 
   // --- S&P 500 vs 200MA via Yahoo Finance ---
   try {
-    const gspcProxies = [`https://api.allorigins.win/raw?url=${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1y')}`, `https://corsproxy.io/?${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1y')}`];
+    const gspcProxies = [`https://thingproxy.freeboard.io/fetch/${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1y')}`, `https://thingproxy.freeboard.io/fetch/${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?interval=1d&range=1y')}`];
     let r;
     for (const u of gspcProxies) { try { r = await fetch(u, {signal: AbortSignal.timeout(8000)}); if (r.ok) break; } catch(e) {} }
     const d = await r.json();
@@ -722,7 +722,7 @@ async function fetchMarketRisk() {
 
   // --- PUT/CALL via Yahoo (PCALL) ---
   try {
-    const pcProxies = [`https://api.allorigins.win/raw?url=${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EPCALL?interval=1d&range=1d')}`, `https://corsproxy.io/?${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EPCALL?interval=1d&range=1d')}`];
+    const pcProxies = [`https://thingproxy.freeboard.io/fetch/${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EPCALL?interval=1d&range=1d')}`, `https://thingproxy.freeboard.io/fetch/${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EPCALL?interval=1d&range=1d')}`];
     let r;
     for (const u of pcProxies) { try { r = await fetch(u, {signal: AbortSignal.timeout(8000)}); if (r.ok) break; } catch(e) {} }
     const d = await r.json();
@@ -788,7 +788,7 @@ async function fetchMarketRisk() {
 
   // --- Treasury 10Y Yield via Yahoo Finance ---
   try {
-    const t10Proxies = [`https://api.allorigins.win/raw?url=${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=5d')}`, `https://corsproxy.io/?${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=5d')}`];
+    const t10Proxies = [`https://thingproxy.freeboard.io/fetch/${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=5d')}`, `https://thingproxy.freeboard.io/fetch/${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?interval=1d&range=5d')}`];
     let r;
     for (const u of t10Proxies) { try { r = await fetch(u, {signal: AbortSignal.timeout(8000)}); if (r.ok) break; } catch(e) {} }
     const d = await r.json();
@@ -808,7 +808,7 @@ async function fetchMarketRisk() {
 
   // --- Treasury 2Y Yield via Yahoo Finance ---
   try {
-    const t2Proxies = [`https://api.allorigins.win/raw?url=${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EIRX?interval=1d&range=5d')}`, `https://corsproxy.io/?${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EIRX?interval=1d&range=5d')}`];
+    const t2Proxies = [`https://thingproxy.freeboard.io/fetch/${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EIRX?interval=1d&range=5d')}`, `https://thingproxy.freeboard.io/fetch/${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EIRX?interval=1d&range=5d')}`];
     let r;
     for (const u of t2Proxies) { try { r = await fetch(u, {signal: AbortSignal.timeout(8000)}); if (r.ok) break; } catch(e) {} }
     const d = await r.json();
@@ -828,7 +828,7 @@ async function fetchMarketRisk() {
 
   // --- % Stocks Above 200MA via S&P 500 breadth (^MMTH proxy) ---
   try {
-    const mmProxies = [`https://api.allorigins.win/raw?url=${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EMMTH?interval=1d&range=1d')}`, `https://corsproxy.io/?${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EMMTH?interval=1d&range=1d')}`];
+    const mmProxies = [`https://thingproxy.freeboard.io/fetch/${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EMMTH?interval=1d&range=1d')}`, `https://thingproxy.freeboard.io/fetch/${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/%5EMMTH?interval=1d&range=1d')}`];
     let r;
     for (const u of mmProxies) { try { r = await fetch(u, {signal: AbortSignal.timeout(8000)}); if (r.ok) break; } catch(e) {} }
     const d = await r.json();
