@@ -2408,7 +2408,7 @@ function toggleGlossary() {
 // =====================
 updateMarketStatus();
 refreshPrices();
-setInterval(refreshPrices, 60000); // refresh prices every 60 seconds (TwelveData batch — 390 calls/day)
+setInterval(refreshPrices, 300000); // refresh prices every 5 minutes (TwelveData batch — 192 calls/day)
 setInterval(updateMarketStatus, 1000); // every second for countdown
 setInterval(checkMarketBell, 10000); // check every 10 seconds
 </script>
