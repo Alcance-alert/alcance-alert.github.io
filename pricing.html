@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alcance Alert — Plans & Pricing</title>
+<script src="https://js.stripe.com/v3/"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0a14;color:#fff;font-family:'Segoe UI',sans-serif;min-height:100vh;}
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid rgba(255,255,255,0.07);}
+.logo{font-size:18px;font-weight:700;letter-spacing:1px;color:#fff;}
+.logo span{color:#00ff88;}
+nav a{color:#aaa;text-decoration:none;margin-left:20px;font-size:14px;}
+nav a:hover{color:#fff;}
+.hero{text-align:center;padding:60px 20px 40px;}
+.hero h1{font-size:36px;font-weight:700;margin-bottom:12px;}
+.hero h1 span{color:#00ff88;}
+.hero p{color:#888;font-size:16px;max-width:500px;margin:0 auto;}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;max-width:1100px;margin:0 auto;padding:20px 24px 60px;}
+.plan{background:#0f0f1e;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:32px 24px;position:relative;transition:transform 0.2s,border-color 0.2s;}
+.plan:hover{transform:translateY(-4px);}
+.plan.popular{border-color:#00ff88;box-shadow:0 0 30px rgba(0,255,136,0.1);}
+.badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#00ff88;color:#000;font-size:11px;font-weight:700;padding:4px 14px;border-radius:20px;letter-spacing:1px;}
+.plan-name{font-size:13px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.plan-price{font-size:42px;font-weight:700;margin-bottom:4px;}
+.plan-price span{font-size:16px;color:#888;font-weig
+cat > ~/Documents/alcance-alert.github.io/pricing.html << 'HTMLEOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alcance Alert — Plans & Pricing</title>
+<script src="https://js.stripe.com/v3/"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#0a0a14;color:#fff;font-family:'Segoe UI',sans-serif;min-height:100vh;}
+header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid rgba(255,255,255,0.07);}
+.logo{font-size:18px;font-weight:700;letter-spacing:1px;color:#fff;}
+.logo span{color:#00ff88;}
+nav a{color:#aaa;text-decoration:none;margin-left:20px;font-size:14px;}
+nav a:hover{color:#fff;}
+.hero{text-align:center;padding:60px 20px 40px;}
+.hero h1{font-size:36px;font-weight:700;margin-bottom:12px;}
+.hero h1 span{color:#00ff88;}
+.hero p{color:#888;font-size:16px;max-width:500px;margin:0 auto;}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;max-width:1100px;margin:0 auto;padding:20px 24px 60px;}
+.plan{background:#0f0f1e;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:32px 24px;position:relative;transition:transform 0.2s,border-color 0.2s;}
+.plan:hover{transform:translateY(-4px);}
+.plan.popular{border-color:#00ff88;box-shadow:0 0 30px rgba(0,255,136,0.1);}
+.badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#00ff88;color:#000;font-size:11px;font-weight:700;padding:4px 14px;border-radius:20px;letter-spacing:1px;}
+.plan-name{font-size:13px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+.plan-price{font-size:42px;font-weight:700;margin-bottom:4px;}
+.plan-price span{font-size:16px;color:#888;font-weight:400;}
+.plan-desc{color:#666;font-size:13px;margin-bottom:24px;}
+.features{list-style:none;margin-bottom:28px;}
+.features li{font-size:13px;color:#bbb;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;align-items:center;gap:8px;}
+.features li:last-child{border:none;}
+.features li::before{content:'✓';color:#00ff88;font-weight:700;flex-shrink:0;}
+.features li.no::before{content:'✗';color:#444;}
+.features li.no{color:#444;}
+.btn{width:100%;padding:14px;border-radius:10px;border:none;font-size:14px;font-weight:700;cursor:pointer;letter-spacing:0.5px;transition:all 0.2s;}
+.btn-primary{background:#00ff88;color:#000;}
+.btn-primary:hover{background:#00cc6a;}
+.btn-secondary{background:transparent;color:#00ff88;border:1px solid #00ff88;}
+.btn-secondary:hover{background:rgba(0,255,136,0.1);}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+.loading{text-align:center;padding:8px;font-size:12px;color:#888;min-height:20px;}
+footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px solid rgba(255,255,255,0.05);}
+.user-bar{background:rgba(0,255,136,0.05);border-bottom:1px solid rgba(0,255,136,0.1);padding:8px 32px;font-size:12px;color:#888;display:none;}
+.user-bar span{color:#00ff88;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">ALCANCE <span>ALERT</span></div>
+  <nav>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="login.html" id="authLink">Login</a>
+  </nav>
+</header>
+
+<div class="user-bar" id="userBar">
+  Logged in as <span id="userEmail"></span>
+</div>
+
+<div class="hero">
+  <h1>Choose Your <span>Alert Plan</span></h1>
+  <p>Real-time stock alerts. Buy the nightmare, sell the dream.</p>
+</div>
+
+<div class="plans">
+
+  <!-- BASIC -->
+  <div class="plan">
+    <div class="plan-name">Basic</div>
+    <div class="plan-price">$10<span>/mo</span></div>
+    <div class="plan-desc">Get started with core alerts</div>
+    <ul class="features">
+      <li>30 curated tickers</li>
+      <li>Live dashboard</li>
+      <li>4-level alert system</li>
+      <li>Market Risk Report</li>
+      <li class="no">iMessage/SMS alerts</li>
+      <li class="no">Custom tickers</li>
+    </ul>
+    <button class="btn btn-secondary" onclick="subscribe('price_1TnRDDEGmp015TfO1HdTRKL5','Basic')" id="btn-basic">Subscribe</button>
+    <div class="loading" id="load-basic"></div>
+  </div>
+
+  <!-- BASIC PLUS -->
+  <div class="plan">
+    <div class="plan-name">Basic Plus</div>
+    <div class="plan-price">$15<span>/mo</span></div>
+    <div class="plan-desc">Alerts that follow you anywhere</div>
+    <ul class="features">
+      <li>30 curated tickers</li>
+      <li>Live dashboard</li>
+      <li>4-level alert system</li>
+      <li>Market Risk Report</li>
+      <li>iMessage/SMS alerts</li>
+      <li class="no">Custom tickers</li>
+    </ul>
+    <button class="btn btn-secondary" onclick="subscribe('price_1TnREEEGmp015TfO6eygRKxn','Basic Plus')" id="btn-basicplus">Subscribe</button>
+    <div class="loading" id="load-basicplus"></div>
+  </div>
+
+  <!-- STANDARD -->
+  <div class="plan popular">
+    <div class="badge">MOST POPULAR</div>
+    <div class="plan-name">Standard</div>
+    <div class="plan-price">$25<span>/mo</span></div>
+    <div class="plan-desc">Full suite for serious investors</div>
+    <ul class="features">
+      <li>50 curated tickers</li>
+      <li>Live dashboard</li>
+      <li>4-level alert system</li>
+      <li>Market Risk Report</li>
+      <li>iMessage/SMS alerts</li>
+      <li>5 custom tickers</li>
+    </ul>
+    <button class="btn btn-primary" onclick="subscribe('price_1TnRFJEGmp015TfORnBKpWek','Standard')" id="btn-standard">Subscribe</button>
+    <div class="loading" id="load-standard"></div>
+  </div>
+
+  <!-- VIP -->
+  <div class="plan">
+    <div class="plan-name">VIP</div>
+    <div class="plan-price">$39<span>/mo</span></div>
+    <div class="plan-desc">Maximum access, maximum edge</div>
+    <ul class="features">
+      <li>55+ curated tickers</li>
+      <li>Live dashboard</li>
+      <li>4-level alert system</li>
+      <li>Market Risk Report</li>
+      <li>iMessage/SMS alerts</li>
+      <li>5 custom tickers</li>
+    </ul>
+    <button class="btn btn-secondary" onclick="subscribe('price_1TnRGNEGmp015TfOdynDzLC6','VIP')" id="btn-vip">Subscribe</button>
+    <div class="loading" id="load-vip"></div>
+  </div>
+
+</div>
+
+<footer>
+  © 2025 Alcance Alert by Alcance Aviation & Trade · <a href="dashboard.html" style="color:#444;">Dashboard</a>
+</footer>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyDA9SxSHUytY6sOUgzGZZxe4BP0fWtsDs8",
+  authDomain: "alcance-alert.firebaseapp.com",
+  projectId: "alcance-alert",
+  appId: "1:1055773203578:web:7f2aec1ff5b19627b36fc3"
+};
+firebase.initializeApp(firebaseConfig);
+
+const stripe = Stripe('pk_test_51TnR41EGmp015TfOJaTTlCQO3K6DLJiyBCf3fMhKr6KyqfS2a3KNjZVs1JGDSAqcrUh0lhvIFv9gFzrMDkAnGlVY00bdfqJS2W');
+
+let currentUser = null;
+
+firebase.auth().onAuthStateChanged(user => {
+  currentUser = user;
+  if (user) {
+    document.getElementById('userBar').style.display = 'block';
+    document.getElementById('userEmail').textContent = user.email;
+    document.getElementById('authLink').textContent = 'Logout';
+    document.getElementById('authLink').href = '#';
+    document.getElementById('authLink').onclick = () => firebase.auth().signOut();
+  }
+});
+
+async function subscribe(priceId, planName) {
+  if (!currentUser) {
+    alert('Please login first to subscribe.');
+    window.location.href = 'login.html?redirect=pricing.html';
+    return;
+  }
+
+  const btnId = 'btn-' + planName.toLowerCase().replace(' ','');
+  const loadId = 'load-' + planName.toLowerCase().replace(' ','');
+  const btn = document.getElementById(btnId);
+  const load = document.getElementById(loadId);
+
+  btn.disabled = true;
+  load.textContent = 'Redirecting to checkout...';
+
+  try {
+    const idToken = await currentUser.getIdToken();
+    const res = await fetch('https://us-central1-alcance-alert.cloudfunctions.net/createCheckoutSession', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ priceId, idToken })
+    });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'Unknown error');
+    }
+  } catch(e) {
+    load.textContent = 'Error: ' + e.message;
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
