@@ -26,36 +26,6 @@ nav a:hover{color:#fff;}
 .badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#FF6B00;color:#000;font-size:11px;font-weight:700;padding:4px 14px;border-radius:20px;letter-spacing:1px;}
 .plan-name{font-size:13px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
 .plan-price{font-size:42px;font-weight:700;margin-bottom:4px;}
-.plan-price span{font-size:16px;color:#888;font-weig
-cat > ~/Documents/alcance-alert.github.io/pricing.html << 'HTMLEOF'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Alcance Alert — Plans & Pricing</title>
-<script src="https://js.stripe.com/v3/"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;}
-body{background:#0a0a14;color:#fff;font-family:'Segoe UI',sans-serif;min-height:100vh;}
-header{display:flex;align-items:center;justify-content:space-between;padding:16px 32px;border-bottom:1px solid rgba(255,255,255,0.07);}
-.logo{font-size:18px;font-weight:700;letter-spacing:1px;color:#fff;}
-.logo span{color:#FF6B00;}
-nav a{color:#aaa;text-decoration:none;margin-left:20px;font-size:14px;}
-nav a:hover{color:#fff;}
-.hero{text-align:center;padding:60px 20px 40px;}
-.hero h1{font-size:36px;font-weight:700;margin-bottom:12px;}
-.hero h1 span{color:#FF6B00;}
-.hero p{color:#888;font-size:16px;max-width:500px;margin:0 auto;}
-.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;max-width:1100px;margin:0 auto;padding:20px 24px 60px;}
-.plan{background:#0f0f1e;border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:32px 24px;position:relative;transition:transform 0.2s,border-color 0.2s;}
-.plan:hover{transform:translateY(-4px);}
-.plan.popular{border-color:#FF6B00;box-shadow:0 0 30px rgba(0,255,136,0.1);}
-.badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#FF6B00;color:#000;font-size:11px;font-weight:700;padding:4px 14px;border-radius:20px;letter-spacing:1px;}
-.plan-name{font-size:13px;color:#888;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
-.plan-price{font-size:42px;font-weight:700;margin-bottom:4px;}
 .plan-price span{font-size:16px;color:#888;font-weight:400;}
 .plan-desc{color:#666;font-size:13px;margin-bottom:24px;}
 .features{list-style:none;margin-bottom:28px;}
@@ -110,7 +80,7 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
       <li class="no">iMessage/SMS alerts</li>
       <li class="no">Custom tickers</li>
     </ul>
-    <button class="btn btn-secondary" onclick="subscribe('price_1TnRDDEGmp015TfO1HdTRKL5','Basic')" id="btn-basic">Subscribe</button>
+    <button class="btn btn-secondary" onclick="subscribe('price_1TpFSHCVUx33xKToFOpezSAC','Basic')" id="btn-basic">Subscribe</button>
     <div class="loading" id="load-basic"></div>
   </div>
 
@@ -127,7 +97,7 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
       <li>iMessage/SMS alerts</li>
       <li class="no">Custom tickers</li>
     </ul>
-    <button class="btn btn-secondary" onclick="subscribe('price_1TnREEEGmp015TfO6eygRKxn','Basic Plus')" id="btn-basicplus">Subscribe</button>
+    <button class="btn btn-secondary" onclick="subscribe('price_1TpFSGCVUx33xKToBTUnxWga','Basic Plus')" id="btn-basicplus">Subscribe</button>
     <div class="loading" id="load-basicplus"></div>
   </div>
 
@@ -145,7 +115,7 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
       <li>iMessage/SMS alerts</li>
       <li>5 custom tickers</li>
     </ul>
-    <button class="btn btn-primary" onclick="subscribe('price_1TnRFJEGmp015TfORnBKpWek','Standard')" id="btn-standard">Subscribe</button>
+    <button class="btn btn-primary" onclick="subscribe('price_1TpFSFCVUx33xKTomduYMxob','Standard')" id="btn-standard">Subscribe</button>
     <div class="loading" id="load-standard"></div>
   </div>
 
@@ -162,7 +132,7 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
       <li>iMessage/SMS alerts</li>
       <li>5 custom tickers</li>
     </ul>
-    <button class="btn btn-secondary" onclick="subscribe('price_1TnRGNEGmp015TfOdynDzLC6','VIP')" id="btn-vip">Subscribe</button>
+    <button class="btn btn-secondary" onclick="subscribe('price_1TpFSGCVUx33xKToGyTFSzHZ','VIP')" id="btn-vip">Subscribe</button>
     <div class="loading" id="load-vip"></div>
   </div>
 
@@ -181,7 +151,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 
-const stripe = Stripe('pk_test_51TnR41EGmp015TfOJaTTlCQO3K6DLJiyBCf3fMhKr6KyqfS2a3KNjZVs1JGDSAqcrUh0lhvIFv9gFzrMDkAnGlVY00bdfqJS2W');
+const stripe = Stripe('pk_live_51TnR3wCVUx33xKToRbrUlxo2ezkmtFk5yoqMA1SkyXSZV74d14RNPVXYrxhLDftRLweIgf8SdTcsEF68e6PtvXPO00AYAvBm7e');
 
 let currentUser = null;
 
@@ -213,7 +183,7 @@ async function subscribe(priceId, planName) {
 
   try {
     const idToken = await currentUser.getIdToken();
-    const res = await fetch('https://us-central1-alcance-alert.cloudfunctions.net/createCheckoutSession', {
+    const res = await fetch('https://createcheckoutsession-tf4vgrtq5q-uc.a.run.app', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ priceId, idToken })
