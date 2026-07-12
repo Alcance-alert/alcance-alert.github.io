@@ -7,6 +7,7 @@
 <script src="https://js.stripe.com/v3/"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{background:#0a0a14;color:#fff;font-family:'Segoe UI',sans-serif;min-height:100vh;}
@@ -44,6 +45,19 @@ nav a:hover{color:#fff;}
 footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px solid rgba(255,255,255,0.05);}
 .user-bar{background:rgba(0,255,136,0.05);border-bottom:1px solid rgba(0,255,136,0.1);padding:8px 32px;font-size:12px;color:#888;display:none;}
 .user-bar span{color:#FF6B00;}
+
+/* PHONE MODAL */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:#0f0f1e;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:28px;max-width:360px;width:90%;}
+.modal-box h3{font-size:18px;margin-bottom:8px;}
+.modal-box p{font-size:13px;color:#888;margin-bottom:20px;line-height:1.4;}
+.modal-box input{width:100%;padding:12px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:#1a1a2e;color:#fff;font-size:14px;margin-bottom:8px;}
+.modal-box input:focus{outline:none;border-color:#FF6B00;}
+.modal-error{color:#ff5c5c;font-size:12px;min-height:16px;margin-bottom:8px;}
+.modal-actions{display:flex;gap:10px;margin-top:12px;}
+.modal-actions button{flex:1;}
+.btn-cancel{background:transparent;color:#888;border:1px solid rgba(255,255,255,0.15);}
 </style>
 </head>
 <body>
@@ -80,7 +94,7 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
       <li class="no">iMessage/SMS alerts</li>
       <li class="no">Custom tickers</li>
     </ul>
-    <button class="btn btn-secondary" onclick="subscribe('price_1TpFSHCVUx33xKToFOpezSAC','Basic')" id="btn-basic">Subscribe</button>
+    <button class="btn btn-secondary" onclick="handleSubscribeClick('price_1TpFSHCVUx33xKToFOpezSAC','Basic',false)" id="btn-basic">Subscribe</button>
     <div class="loading" id="load-basic"></div>
   </div>
 
@@ -97,7 +111,7 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
       <li>iMessage/SMS alerts</li>
       <li class="no">Custom tickers</li>
     </ul>
-    <button class="btn btn-secondary" onclick="subscribe('price_1TpFSGCVUx33xKToBTUnxWga','Basic Plus')" id="btn-basicplus">Subscribe</button>
+    <button class="btn btn-secondary" onclick="handleSubscribeClick('price_1TpFSGCVUx33xKToBTUnxWga','Basic Plus',true)" id="btn-basicplus">Subscribe</button>
     <div class="loading" id="load-basicplus"></div>
   </div>
 
@@ -108,14 +122,14 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
     <div class="plan-price">$25<span>/mo</span></div>
     <div class="plan-desc">Full suite for serious investors</div>
     <ul class="features">
-      <li>50 curated tickers</li>
+      <li>30 curated tickers</li>
       <li>Live dashboard</li>
       <li>4-level alert system</li>
       <li>Market Risk Report</li>
       <li>iMessage/SMS alerts</li>
       <li>5 custom tickers</li>
     </ul>
-    <button class="btn btn-primary" onclick="subscribe('price_1TpFSFCVUx33xKTomduYMxob','Standard')" id="btn-standard">Subscribe</button>
+    <button class="btn btn-primary" onclick="handleSubscribeClick('price_1TpFSFCVUx33xKTomduYMxob','Standard',true)" id="btn-standard">Subscribe</button>
     <div class="loading" id="load-standard"></div>
   </div>
 
@@ -125,14 +139,14 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
     <div class="plan-price">$39<span>/mo</span></div>
     <div class="plan-desc">Maximum access, maximum edge</div>
     <ul class="features">
-      <li>55+ curated tickers</li>
+      <li>50 curated tickers</li>
       <li>Live dashboard</li>
       <li>4-level alert system</li>
       <li>Market Risk Report</li>
       <li>iMessage/SMS alerts</li>
       <li>5 custom tickers</li>
     </ul>
-    <button class="btn btn-secondary" onclick="subscribe('price_1TpFSGCVUx33xKToGyTFSzHZ','VIP')" id="btn-vip">Subscribe</button>
+    <button class="btn btn-secondary" onclick="handleSubscribeClick('price_1TpFSGCVUx33xKToGyTFSzHZ','VIP',true)" id="btn-vip">Subscribe</button>
     <div class="loading" id="load-vip"></div>
   </div>
 
@@ -142,6 +156,21 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
   © 2025 Alcance Alert by Alcance Aviation & Trade · <a href="dashboard.html" style="color:#444;">Dashboard</a>
 </footer>
 
+<!-- PHONE NUMBER MODAL — shown only for plans that include iMessage/SMS alerts -->
+<div class="modal-overlay" id="phoneModal">
+  <div class="modal-box">
+    <h3>📱 Where should we text your alerts?</h3>
+    <p>This plan includes iMessage/SMS alerts. Enter the number you'd like alerts sent to.</p>
+    <p style="color:#FF6B00;font-weight:600;margin-bottom:4px;">⚠️ Include your country code (e.g. +1 for US, +55 for Brazil) — without it, you won't receive any alerts.</p>
+    <input type="tel" id="phoneInput" placeholder="+1 954 123 4567" autocomplete="tel">
+    <div class="modal-error" id="phoneError"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closePhoneModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmPhoneAndSubscribe()">Continue</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyDA9SxSHUytY6sOUgzGZZxe4BP0fWtsDs8",
@@ -150,10 +179,12 @@ const firebaseConfig = {
   appId: "1:1055773203578:web:7f2aec1ff5b19627b36fc3"
 };
 firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 const stripe = Stripe('pk_live_51TnR3wCVUx33xKToRbrUlxo2ezkmtFk5yoqMA1SkyXSZV74d14RNPVXYrxhLDftRLweIgf8SdTcsEF68e6PtvXPO00AYAvBm7e');
 
 let currentUser = null;
+let pendingSubscription = null; // { priceId, planName }
 
 firebase.auth().onAuthStateChanged(user => {
   currentUser = user;
@@ -165,6 +196,76 @@ firebase.auth().onAuthStateChanged(user => {
     document.getElementById('authLink').onclick = () => firebase.auth().signOut();
   }
 });
+
+// Entry point for every "Subscribe" button.
+// needsPhone = true for Basic Plus / Standard / VIP (plans with iMessage/SMS alerts).
+// Basic has no SMS feature, so it skips the phone step entirely.
+function handleSubscribeClick(priceId, planName, needsPhone) {
+  if (!currentUser) {
+    alert('Please login first to subscribe.');
+    window.location.href = 'login.html?redirect=pricing.html';
+    return;
+  }
+
+  if (!needsPhone) {
+    subscribe(priceId, planName);
+    return;
+  }
+
+  pendingSubscription = { priceId, planName };
+  document.getElementById('phoneError').textContent = '';
+  document.getElementById('phoneInput').value = '';
+  document.getElementById('phoneModal').classList.add('open');
+}
+
+function closePhoneModal() {
+  pendingSubscription = null;
+  document.getElementById('phoneModal').classList.remove('open');
+}
+
+function isValidPhone(phone) {
+  // Require an explicit country code: must start with + followed by 10-14 digits total.
+  // No guessing the country — a wrong guess means the person pays and never gets alerts.
+  return /^\+[1-9]\d{9,14}$/.test(phone.replace(/[\s\-()]/g, ''));
+}
+
+async function confirmPhoneAndSubscribe() {
+  const raw = document.getElementById('phoneInput').value.trim();
+  const errorEl = document.getElementById('phoneError');
+  const phone = raw.replace(/[\s\-()]/g, '');
+
+  if (!phone.startsWith('+')) {
+    errorEl.textContent = "Don't forget the country code — start with + (e.g. +1, +55).";
+    return;
+  }
+  if (!isValidPhone(phone)) {
+    errorEl.textContent = 'Please enter a valid phone number with country code.';
+    return;
+  }
+
+  const confirmed = confirm(`We'll send your alerts to:\n\n${phone}\n\nIs this correct?`);
+  if (!confirmed) return;
+
+  const { priceId, planName } = pendingSubscription;
+  const continueBtn = document.querySelector('#phoneModal .btn-primary');
+  continueBtn.disabled = true;
+  errorEl.textContent = '';
+
+  try {
+    await db.collection('users').doc(currentUser.uid).set(
+      { phone, phoneUpdatedAt: new Date().toISOString() },
+      { merge: true }
+    );
+  } catch (e) {
+    errorEl.textContent = 'Could not save phone number: ' + e.message;
+    continueBtn.disabled = false;
+    return;
+  }
+
+  document.getElementById('phoneModal').classList.remove('open');
+  continueBtn.disabled = false;
+  subscribe(priceId, planName);
+}
 
 async function subscribe(priceId, planName) {
   if (!currentUser) {
