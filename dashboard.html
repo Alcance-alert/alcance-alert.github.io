@@ -560,17 +560,24 @@ onAuthStateChanged(auth, async (user) => {
     const emailEl = document.getElementById('userEmail');
     if (emailEl) emailEl.textContent = user.email || user.displayName || '';
     let userPlan = 'free';
+    let userCustomTickers = [];
     try {
       const userRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userRef);
       if (!userSnap.exists()) {
         await setDoc(userRef, { email: user.email || '', plan: 'free', createdAt: new Date().toISOString() });
       } else {
-        userPlan = userSnap.data().plan || 'free';
+        const data = userSnap.data();
+        userPlan = data.plan || 'free';
+        userCustomTickers = Array.isArray(data.customTickers) ? data.customTickers : [];
       }
     } catch(e) { console.warn('Firestore error:', e); }
     window._userPlan = userPlan;
-    console.log('Plan:', userPlan);
+    window._userCustomTickers = userCustomTickers;
+    console.log('Plan:', userPlan, '| Custom tickers:', userCustomTickers.length);
+    // Re-render now that we know the real plan (initial render may have
+    // fired before this async check finished and defaulted to the base tier)
+    if (typeof render === 'function') render();
   } else {
     window.location.href = '/login.html';
   }
@@ -1271,6 +1278,41 @@ let tickers = [
   { symbol: 'UAL',  name: 'United Airlines',          alert: 89, beyond: 87, approaching: 92, watch: 95, group: 'Aviation / Defense', required: false },
 ];
 
+// =====================
+// PLAN-BASED TICKER FILTERING
+// =====================
+// Basic / Basic Plus: 30 curated tickers (required ones always included first)
+// Standard / VIP: full curated list, plus any custom tickers the user added
+const PLAN_TICKER_LIMITS = {
+  free: 30,
+  basic: 30,
+  basic_plus: 30,
+  standard: Infinity,
+  vip: Infinity,
+};
+
+function getVisibleTickers() {
+  const plan = (window._userPlan || 'free').toLowerCase();
+  const limit = PLAN_TICKER_LIMITS.hasOwnProperty(plan) ? PLAN_TICKER_LIMITS[plan] : PLAN_TICKER_LIMITS.free;
+
+  let curated = tickers;
+  if (limit !== Infinity) {
+    // Required tickers always included first, then fill up to the limit
+    // in the existing list order.
+    const required = tickers.filter(t => t.required);
+    const rest = tickers.filter(t => !t.required);
+    curated = required.concat(rest).slice(0, limit);
+  }
+
+  // Custom tickers (Standard/VIP only) — read from Firestore if present.
+  // Safe no-op if the field doesn't exist yet.
+  const custom = (window._userCustomTickers || []).filter(
+    ct => !curated.some(t => t.symbol === ct.symbol)
+  );
+
+  return curated.concat(custom);
+}
+
 let prices = {};
 let alertedSymbols = new Set();
 let warningSymbols = new Set();
@@ -1541,16 +1583,19 @@ function render() {
   const container = document.getElementById('sectionsContainer');
   let html = '';
 
+  // Only show the tickers this user's plan is entitled to
+  const visibleTickers = getVisibleTickers();
+
   // Sort all tickers by urgency: alert first, then warning, then clear (by price asc)
-  const beyond = tickers.filter(t => getStatus(t) === 'beyond')
+  const beyond = visibleTickers.filter(t => getStatus(t) === 'beyond')
     .sort((a, b) => (prices[a.symbol]?.price || 0) - (prices[b.symbol]?.price || 0));
-  const triggered = tickers.filter(t => getStatus(t) === 'alert')
+  const triggered = visibleTickers.filter(t => getStatus(t) === 'alert')
     .sort((a, b) => (prices[a.symbol]?.price || 0) - (prices[b.symbol]?.price || 0));
-  const warning = tickers.filter(t => getStatus(t) === 'warning')
+  const warning = visibleTickers.filter(t => getStatus(t) === 'warning')
     .sort((a, b) => (prices[a.symbol]?.price || 0) - (prices[b.symbol]?.price || 0));
-  const watch = tickers.filter(t => getStatus(t) === 'watch')
+  const watch = visibleTickers.filter(t => getStatus(t) === 'watch')
     .sort((a, b) => (prices[a.symbol]?.price || 0) - (prices[b.symbol]?.price || 0));
-  const clear = tickers.filter(t => getStatus(t) === 'ok')
+  const clear = visibleTickers.filter(t => getStatus(t) === 'ok')
     .sort((a, b) => (prices[a.symbol]?.price || 0) - (prices[b.symbol]?.price || 0));
 
   const urgencyGroups = [
@@ -1758,13 +1803,13 @@ function render() {
   // Update news badges
   updateNewsBadges();
 
-  // Update summary
-  document.getElementById('totalCount').textContent = tickers.length;
-  document.getElementById('watchCount').textContent = tickers.filter(t => getStatus(t) === 'watch').length;
-  document.getElementById('warningCount').textContent = tickers.filter(t => getStatus(t) === 'warning').length;
-  document.getElementById('alertCount').textContent = tickers.filter(t => getStatus(t) === 'alert').length;
+  // Update summary (plan-filtered counts)
+  document.getElementById('totalCount').textContent = visibleTickers.length;
+  document.getElementById('watchCount').textContent = visibleTickers.filter(t => getStatus(t) === 'watch').length;
+  document.getElementById('warningCount').textContent = visibleTickers.filter(t => getStatus(t) === 'warning').length;
+  document.getElementById('alertCount').textContent = visibleTickers.filter(t => getStatus(t) === 'alert').length;
   const beyondEl = document.getElementById('beyondCount');
-  if (beyondEl) beyondEl.textContent = tickers.filter(t => getStatus(t) === 'beyond').length;
+  if (beyondEl) beyondEl.textContent = visibleTickers.filter(t => getStatus(t) === 'beyond').length;
 
   // Update time
   const now = new Date();
