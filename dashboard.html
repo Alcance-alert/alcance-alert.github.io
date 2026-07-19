@@ -575,6 +575,14 @@ onAuthStateChanged(auth, async (user) => {
     window._userPlan = userPlan;
     window._userCustomTickers = userCustomTickers;
     console.log('Plan:', userPlan, '| Custom tickers:', userCustomTickers.length);
+
+    // No dashboard access without a paid plan — send straight to pricing.
+    const PAID_PLANS = ['basic', 'basic_plus', 'standard', 'vip', 'owner'];
+    if (!PAID_PLANS.includes((userPlan || '').toLowerCase())) {
+      window.location.href = '/pricing.html';
+      return;
+    }
+
     // Re-render now that we know the real plan (initial render may have
     // fired before this async check finished and defaulted to the base tier)
     if (typeof render === 'function') render();
@@ -1287,8 +1295,9 @@ const PLAN_TICKER_LIMITS = {
   free: 30,
   basic: 30,
   basic_plus: 30,
-  standard: Infinity,
-  vip: Infinity,
+  standard: 30,
+  vip: 50,
+  owner: Infinity, // full, unrestricted access — you built this thing
 };
 
 function getVisibleTickers() {
