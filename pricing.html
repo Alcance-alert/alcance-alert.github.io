@@ -54,6 +54,7 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
 .modal-box p{font-size:13px;color:#888;margin-bottom:20px;line-height:1.4;}
 .modal-box input{width:100%;padding:12px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:#1a1a2e;color:#fff;font-size:14px;margin-bottom:8px;}
 .modal-box input:focus{outline:none;border-color:#FF6B00;}
+.ticker-input{text-transform:uppercase;}
 .modal-error{color:#ff5c5c;font-size:12px;min-height:16px;margin-bottom:8px;}
 .modal-actions{display:flex;gap:10px;margin-top:12px;}
 .modal-actions button{flex:1;}
@@ -94,7 +95,7 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
       <li class="no">iMessage/SMS alerts</li>
       <li class="no">Custom tickers</li>
     </ul>
-    <button class="btn btn-secondary" onclick="handleSubscribeClick('price_1TpFSHCVUx33xKToFOpezSAC','Basic',false)" id="btn-basic">Subscribe</button>
+    <button class="btn btn-secondary" onclick="handleSubscribeClick('price_1TpFSHCVUx33xKToFOpezSAC','Basic',false,false)" id="btn-basic">Subscribe</button>
     <div class="loading" id="load-basic"></div>
   </div>
 
@@ -111,7 +112,7 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
       <li>iMessage/SMS alerts</li>
       <li class="no">Custom tickers</li>
     </ul>
-    <button class="btn btn-secondary" onclick="handleSubscribeClick('price_1TpFSGCVUx33xKToBTUnxWga','Basic Plus',true)" id="btn-basicplus">Subscribe</button>
+    <button class="btn btn-secondary" onclick="handleSubscribeClick('price_1TpFSGCVUx33xKToBTUnxWga','Basic Plus',true,false)" id="btn-basicplus">Subscribe</button>
     <div class="loading" id="load-basicplus"></div>
   </div>
 
@@ -129,7 +130,7 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
       <li>iMessage/SMS alerts</li>
       <li>5 custom tickers</li>
     </ul>
-    <button class="btn btn-primary" onclick="handleSubscribeClick('price_1TpFSFCVUx33xKTomduYMxob','Standard',true)" id="btn-standard">Subscribe</button>
+    <button class="btn btn-primary" onclick="handleSubscribeClick('price_1TpFSFCVUx33xKTomduYMxob','Standard',true,true)" id="btn-standard">Subscribe</button>
     <div class="loading" id="load-standard"></div>
   </div>
 
@@ -146,7 +147,7 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
       <li>iMessage/SMS alerts</li>
       <li>5 custom tickers</li>
     </ul>
-    <button class="btn btn-secondary" onclick="handleSubscribeClick('price_1TpFSGCVUx33xKToGyTFSzHZ','VIP',true)" id="btn-vip">Subscribe</button>
+    <button class="btn btn-secondary" onclick="handleSubscribeClick('price_1TpFSGCVUx33xKToGyTFSzHZ','VIP',true,true)" id="btn-vip">Subscribe</button>
     <div class="loading" id="load-vip"></div>
   </div>
 
@@ -162,8 +163,20 @@ footer{text-align:center;padding:20px;color:#444;font-size:12px;border-top:1px s
     <h3>📱 Where should we text your alerts?</h3>
     <p>This plan includes iMessage/SMS alerts. Enter the number you'd like alerts sent to.</p>
     <p style="color:#FF6B00;font-weight:600;margin-bottom:4px;">⚠️ Include your country code (e.g. +1 for US, +55 for Brazil) — without it, you won't receive any alerts.</p>
-    <input type="tel" id="phoneInput" placeholder="+1 954 123 4567" autocomplete="tel">
+    <input type="tel" id="phoneInput" placeholder="+1 954 123 4567" autocomplete="tel" oninput="onPhoneInputChange()">
     <div class="modal-error" id="phoneError"></div>
+
+    <div id="tickerSection" style="display:none;margin-top:20px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);">
+      <h3 style="margin-bottom:8px;">📈 Now pick your 5 custom tickers</h3>
+      <p>Enter the stock symbols you want to track (e.g. NVDA, PLTR).</p>
+      <input type="text" class="ticker-input" placeholder="Ticker 1 (e.g. NVDA)" maxlength="6">
+      <input type="text" class="ticker-input" placeholder="Ticker 2" maxlength="6">
+      <input type="text" class="ticker-input" placeholder="Ticker 3" maxlength="6">
+      <input type="text" class="ticker-input" placeholder="Ticker 4" maxlength="6">
+      <input type="text" class="ticker-input" placeholder="Ticker 5" maxlength="6">
+      <div class="modal-error" id="tickerError"></div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-cancel" onclick="closePhoneModal()">Cancel</button>
       <button class="btn btn-primary" onclick="confirmPhoneAndSubscribe()">Continue</button>
@@ -199,8 +212,9 @@ firebase.auth().onAuthStateChanged(user => {
 
 // Entry point for every "Subscribe" button.
 // needsPhone = true for Basic Plus / Standard / VIP (plans with iMessage/SMS alerts).
-// Basic has no SMS feature, so it skips the phone step entirely.
-function handleSubscribeClick(priceId, planName, needsPhone) {
+// needsTickers = true for Standard / VIP only (plans that include 5 custom tickers).
+// Basic has neither — it skips this modal entirely.
+function handleSubscribeClick(priceId, planName, needsPhone, needsTickers) {
   if (!currentUser) {
     alert('Please login first to subscribe.');
     window.location.href = 'login.html?redirect=pricing.html';
@@ -212,9 +226,12 @@ function handleSubscribeClick(priceId, planName, needsPhone) {
     return;
   }
 
-  pendingSubscription = { priceId, planName };
+  pendingSubscription = { priceId, planName, needsTickers };
   document.getElementById('phoneError').textContent = '';
   document.getElementById('phoneInput').value = '';
+  document.getElementById('tickerError').textContent = '';
+  document.querySelectorAll('.ticker-input').forEach(el => el.value = '');
+  document.getElementById('tickerSection').style.display = 'none';
   document.getElementById('phoneModal').classList.add('open');
 }
 
@@ -229,35 +246,81 @@ function isValidPhone(phone) {
   return /^\+[1-9]\d{9,14}$/.test(phone.replace(/[\s\-()]/g, ''));
 }
 
+// Progressive reveal: once the phone number looks valid, show the ticker
+// fields (only relevant for Standard/VIP — pendingSubscription.needsTickers).
+function onPhoneInputChange() {
+  if (!pendingSubscription || !pendingSubscription.needsTickers) return;
+  const raw = document.getElementById('phoneInput').value.trim().replace(/[\s\-()]/g, '');
+  const section = document.getElementById('tickerSection');
+  section.style.display = isValidPhone(raw) ? 'block' : 'none';
+}
+
+function isValidTickerSymbol(sym) {
+  // Simple format check (1-6 letters). We can't verify it's a real, tradeable
+  // symbol client-side without a market data call — that's a later improvement.
+  return /^[A-Z]{1,6}$/.test(sym);
+}
+
 async function confirmPhoneAndSubscribe() {
   const raw = document.getElementById('phoneInput').value.trim();
-  const errorEl = document.getElementById('phoneError');
+  const phoneErrorEl = document.getElementById('phoneError');
+  const tickerErrorEl = document.getElementById('tickerError');
   const phone = raw.replace(/[\s\-()]/g, '');
 
+  phoneErrorEl.textContent = '';
+  tickerErrorEl.textContent = '';
+
   if (!phone.startsWith('+')) {
-    errorEl.textContent = "Don't forget the country code — start with + (e.g. +1, +55).";
+    phoneErrorEl.textContent = "Don't forget the country code — start with + (e.g. +1, +55).";
     return;
   }
   if (!isValidPhone(phone)) {
-    errorEl.textContent = 'Please enter a valid phone number with country code.';
+    phoneErrorEl.textContent = 'Please enter a valid phone number with country code.';
     return;
   }
 
-  const confirmed = confirm(`We'll send your alerts to:\n\n${phone}\n\nIs this correct?`);
+  const { priceId, planName, needsTickers } = pendingSubscription;
+  let tickers = [];
+
+  if (needsTickers) {
+    const rawTickers = Array.from(document.querySelectorAll('.ticker-input'))
+      .map(el => el.value.trim().toUpperCase());
+
+    if (rawTickers.some(t => t === '')) {
+      tickerErrorEl.textContent = 'Please fill in all 5 custom tickers — this plan requires it.';
+      return;
+    }
+    const invalid = rawTickers.filter(t => !isValidTickerSymbol(t));
+    if (invalid.length > 0) {
+      tickerErrorEl.textContent = `Invalid ticker symbol(s): ${invalid.join(', ')}. Use letters only (e.g. NVDA).`;
+      return;
+    }
+    const unique = new Set(rawTickers);
+    if (unique.size !== rawTickers.length) {
+      tickerErrorEl.textContent = 'Each of the 5 tickers must be different.';
+      return;
+    }
+    tickers = rawTickers;
+  }
+
+  const confirmMsg = needsTickers
+    ? `We'll send your alerts to:\n\n${phone}\n\nTracking these custom tickers:\n${tickers.join(', ')}\n\nIs this correct?`
+    : `We'll send your alerts to:\n\n${phone}\n\nIs this correct?`;
+  const confirmed = confirm(confirmMsg);
   if (!confirmed) return;
 
-  const { priceId, planName } = pendingSubscription;
   const continueBtn = document.querySelector('#phoneModal .btn-primary');
   continueBtn.disabled = true;
-  errorEl.textContent = '';
 
   try {
-    await db.collection('users').doc(currentUser.uid).set(
-      { phone, phoneUpdatedAt: new Date().toISOString() },
-      { merge: true }
-    );
+    const updateData = { phone, phoneUpdatedAt: new Date().toISOString() };
+    if (needsTickers) {
+      updateData.customTickers = tickers.map(symbol => ({ symbol, required: false }));
+      updateData.customTickersUpdatedAt = new Date().toISOString();
+    }
+    await db.collection('users').doc(currentUser.uid).set(updateData, { merge: true });
   } catch (e) {
-    errorEl.textContent = 'Could not save phone number: ' + e.message;
+    phoneErrorEl.textContent = 'Could not save your info: ' + e.message;
     continueBtn.disabled = false;
     return;
   }
